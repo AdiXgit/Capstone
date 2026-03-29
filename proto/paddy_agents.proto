@@ -1,0 +1,263 @@
+syntax = "proto3";
+
+package paddyagents;
+
+option go_package = "github.com/karnataka-paddy/paddy-multiagent/proto";
+
+// ─────────────────────────────────────────────
+// SHARED TYPES
+// ─────────────────────────────────────────────
+
+message AgentMetadata {
+  string agent_id    = 1;
+  string agent_name  = 2;
+  string timestamp   = 3;
+  float  confidence  = 4;
+}
+
+// ─────────────────────────────────────────────
+// ORCHESTRATOR SERVICE
+// ─────────────────────────────────────────────
+
+service OrchestratorService {
+  rpc RouteQuery          (FarmerQuery)         returns (OrchestratorResponse);
+  rpc GetSystemStatus     (StatusRequest)       returns (SystemStatusResponse);
+  rpc RegisterAgent       (AgentRegistration)   returns (RegistrationAck);
+}
+
+message FarmerQuery {
+  string query_id        = 1;
+  string farmer_id       = 2;
+  string district        = 3;
+  string query_text      = 4;
+  string query_type      = 5;  // WEATHER | SOIL | CROP_HEALTH | YIELD | MARKET
+  string season          = 6;
+  string timestamp       = 7;
+}
+
+message OrchestratorResponse {
+  string              query_id        = 1;
+  string              recommendation  = 2;
+  repeated AgentResult agent_results  = 3;
+  float               overall_confidence = 4;
+  string              timestamp       = 5;
+}
+
+message AgentResult {
+  string agent_name   = 1;
+  string result_json  = 2;
+  float  confidence   = 3;
+  string status       = 4;
+}
+
+message StatusRequest  { string requester = 1; }
+message SystemStatusResponse {
+  string orchestrator_status = 1;
+  repeated string active_agents = 2;
+  int32  total_queries_handled  = 3;
+}
+
+message AgentRegistration {
+  string agent_id   = 1;
+  string agent_name = 2;
+  string agent_type = 3;
+  string host       = 4;
+  int32  port       = 5;
+}
+
+message RegistrationAck {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ─────────────────────────────────────────────
+// WEATHER AGENT SERVICE
+// ─────────────────────────────────────────────
+
+service WeatherAgentService {
+  rpc GetWeatherForecast    (WeatherRequest)       returns (WeatherResponse);
+  rpc GetWeatherAlert       (WeatherRequest)       returns (WeatherAlertResponse);
+  rpc GetHistoricalWeather  (HistoricalWeatherReq) returns (HistoricalWeatherResp);
+}
+
+message WeatherRequest {
+  string district   = 1;
+  string date       = 2;
+  int32  forecast_days = 3;
+}
+
+message WeatherResponse {
+  AgentMetadata metadata       = 1;
+  string district              = 2;
+  float  temperature_max       = 3;
+  float  temperature_min       = 4;
+  float  temperature_avg       = 5;
+  float  rainfall_mm           = 6;
+  float  humidity_percent      = 7;
+  float  wind_speed_kmph       = 8;
+  float  sunshine_hours        = 9;
+  string weather_condition     = 10;
+  string farming_advisory      = 11;
+  repeated DailyForecast forecast = 12;
+}
+
+message DailyForecast {
+  string date              = 1;
+  float  temp_max          = 2;
+  float  temp_min          = 3;
+  float  rainfall_prob     = 4;
+  string condition         = 5;
+}
+
+message WeatherAlertResponse {
+  AgentMetadata metadata   = 1;
+  bool   has_alert         = 2;
+  string alert_type        = 3;
+  string severity          = 4;
+  string message           = 5;
+  string action_required   = 6;
+}
+
+message HistoricalWeatherReq {
+  string district    = 1;
+  string start_date  = 2;
+  string end_date    = 3;
+}
+
+message HistoricalWeatherResp {
+  AgentMetadata metadata      = 1;
+  repeated WeatherResponse records = 2;
+  float  avg_temp             = 3;
+  float  total_rainfall       = 4;
+}
+
+// ─────────────────────────────────────────────
+// SOIL AGENT SERVICE
+// ─────────────────────────────────────────────
+
+service SoilAgentService {
+  rpc GetSoilHealth         (SoilRequest)   returns (SoilHealthResponse);
+  rpc GetFertilizerAdvice   (SoilRequest)   returns (FertilizerResponse);
+  rpc GetSoilTrend          (SoilTrendReq)  returns (SoilTrendResponse);
+}
+
+message SoilRequest {
+  string district      = 1;
+  string season        = 2;
+  string soil_quality  = 3;
+  float  soil_ph       = 4;
+}
+
+message SoilHealthResponse {
+  AgentMetadata metadata     = 1;
+  string district            = 2;
+  string soil_quality        = 3;
+  float  soil_ph             = 4;
+  float  organic_carbon      = 5;
+  float  nitrogen_kg_ha      = 6;
+  float  phosphorus_kg_ha    = 7;
+  float  potassium_kg_ha     = 8;
+  string health_status       = 9;
+  string recommendation      = 10;
+}
+
+message FertilizerResponse {
+  AgentMetadata metadata     = 1;
+  float  urea_kg_ha          = 2;
+  float  dap_kg_ha           = 3;
+  float  potash_kg_ha        = 4;
+  float  organic_kg_ha       = 5;
+  string timing_advice       = 6;
+  string rationale           = 7;
+}
+
+message SoilTrendReq {
+  string district    = 1;
+  int32  years       = 2;
+}
+
+message SoilTrendResponse {
+  AgentMetadata metadata       = 1;
+  string trend_direction       = 2;
+  float  ph_trend              = 3;
+  float  carbon_trend          = 4;
+  string recommendation        = 5;
+}
+
+// ─────────────────────────────────────────────
+// CROP HEALTH AGENT SERVICE
+// ─────────────────────────────────────────────
+
+service CropHealthAgentService {
+  rpc GetCropHealthStatus   (CropHealthRequest)  returns (CropHealthResponse);
+  rpc GetNDVIAnalysis       (NDVIRequest)        returns (NDVIResponse);
+  rpc GetGrowthStageInfo    (GrowthStageRequest) returns (GrowthStageResponse);
+  rpc GetPestDiseaseRisk    (PestDiseaseRequest) returns (PestDiseaseResponse);
+}
+
+message CropHealthRequest {
+  string district   = 1;
+  string season     = 2;
+  int32  year       = 3;
+  string variety    = 4;
+}
+
+message CropHealthResponse {
+  AgentMetadata metadata    = 1;
+  string growth_stage       = 2;
+  int32  days_after_sowing  = 3;
+  float  plant_height_cm    = 4;
+  int32  tiller_count       = 5;
+  float  leaf_area_index    = 6;
+  float  ndvi               = 7;
+  string health_status      = 8;
+  string action_required    = 9;
+}
+
+message NDVIRequest {
+  string district = 1;
+  int32  year     = 2;
+  int32  month    = 3;
+}
+
+message NDVIResponse {
+  AgentMetadata metadata    = 1;
+  float  ndvi_mean          = 2;
+  float  ndvi_std_dev       = 3;
+  float  evi_mean           = 4;
+  float  land_surface_temp  = 5;
+  float  soil_moisture      = 6;
+  string source             = 7;   // "dataset" | "nasa_api" | "sentinel_hub"
+  string vegetation_status  = 8;
+}
+
+message GrowthStageRequest {
+  string district         = 1;
+  string season           = 2;
+  int32  days_after_sowing = 3;
+}
+
+message GrowthStageResponse {
+  AgentMetadata metadata  = 1;
+  string current_stage    = 2;
+  string next_stage       = 3;
+  int32  days_to_next     = 4;
+  string care_advisory    = 5;
+}
+
+message PestDiseaseRequest {
+  string district      = 1;
+  string growth_stage  = 2;
+  string season        = 3;
+  float  humidity      = 4;
+  float  temperature   = 5;
+}
+
+message PestDiseaseResponse {
+  AgentMetadata metadata    = 1;
+  string pest_risk_level    = 2;
+  string disease_risk_level = 3;
+  repeated string likely_pests    = 4;
+  repeated string likely_diseases = 5;
+  string preventive_action  = 6;
+}
