@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package paddy;
+
+// ── Soil Agent ──────────────────────────────────────────
+service SoilAgent {
+  rpc GetNPKProfile    (DistrictRequest)      returns (NPKResponse);
+  rpc GetFertilizerRec (FertilizerRequest)    returns (FertilizerResponse);
+  rpc GetSoilTrend     (DistrictRequest)      returns (SoilTrendResponse);
+}
+
+message DistrictRequest {
+  string district = 1;
+}
+
+message FertilizerRequest {
+  string district = 1;
+  float  nitrogen  = 2;
+  float  phosphorus = 3;
+  float  potassium = 4;
+  float  ph        = 5;
+  float  organic_carbon = 6;
+  string season    = 7;  // "Kharif" or "Rabi"
+}
+
+message NPKResponse {
+  string district   = 1;
+  float  nitrogen   = 2;
+  float  phosphorus = 3;
+  float  potassium  = 4;
+}
+
+message FertilizerResponse {
+  float  urea_kg_per_acre   = 1;
+  float  dap_kg_per_acre    = 2;
+  float  potash_kg_per_acre = 3;
+  string timing_advice      = 4;
+  string season             = 5;
+}
+
+message SoilTrendResponse {
+  string district          = 1;
+  float  ph_slope          = 2;
+  float  ph_last_value     = 3;
+  float  oc_slope          = 4;
+  float  oc_last_value     = 5;
+  string interpretation    = 6;
+}
