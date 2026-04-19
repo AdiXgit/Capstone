@@ -43,7 +43,7 @@ func NewOrchestratorServer() *OrchestratorServer {
 	}
 }
 
-// RegisterAgent — Python agents call this on startup
+// RegisterAgent — agents call this on startup to announce themselves
 func (s *OrchestratorServer) RegisterAgent(
 	ctx context.Context, req *pb.AgentRegistration,
 ) (*pb.RegistrationAck, error) {
@@ -82,18 +82,17 @@ func (s *OrchestratorServer) GetSystemStatus(
 	}, nil
 }
 
-// RouteQuery — fan-out to all relevant agents concurrently, collect results
+// RouteQuery — fan-out to all relevant agents concurrently, collect + synthesize results
 func (s *OrchestratorServer) RouteQuery(
 	ctx context.Context, req *pb.FarmerQuery,
 ) (*pb.OrchestratorResponse, error) {
-	log.Printf("[ORCHESTRATOR] Routing query %s → type=%s district=%s",
-		req.QueryId, req.QueryType, req.District)
+	log.Printf("[ORCHESTRATOR] Routing query %s → type=%s district=%s DAT=%d",
+		req.QueryId, req.QueryType, req.District, req.DaysAfterTransplant)
 
 	s.mu.Lock()
 	s.queryCounter++
 	s.mu.Unlock()
 
-	// Determine which agents to fan-out to
 	targetAgents := s.resolveAgents(req.QueryType)
 
 	type agentWork struct {
@@ -104,7 +103,7 @@ func (s *OrchestratorServer) RouteQuery(
 	resultCh := make(chan agentWork, len(targetAgents))
 	var wg sync.WaitGroup
 
-	// ── Concurrent fan-out ────────────────────────────
+	// ── Concurrent fan-out ────────────────────────────────────────────────
 	for _, agentType := range targetAgents {
 		wg.Add(1)
 		go func(aType string) {
@@ -114,13 +113,12 @@ func (s *OrchestratorServer) RouteQuery(
 		}(agentType)
 	}
 
-	// Close channel when all goroutines complete
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
 
-	// ── Collect results ────────────────────────────────
+	// ── Collect results ───────────────────────────────────────────────────
 	var agentResults []*pb.AgentResult
 	var totalConfidence float32
 	for work := range resultCh {
@@ -133,6 +131,8 @@ func (s *OrchestratorServer) RouteQuery(
 		avgConf = totalConfidence / float32(len(agentResults))
 	}
 
+	// FIX: synthesizeRecommendation now reads actual agent payload fields
+	// instead of just printing "[AgentName: ready]" for every result.
 	recommendation := s.synthesizeRecommendation(agentResults, req)
 
 	return &pb.OrchestratorResponse{
@@ -144,22 +144,31 @@ func (s *OrchestratorServer) RouteQuery(
 	}, nil
 }
 
-// resolveAgents maps query type → agent types to call
+// resolveAgents maps query type → which agent types to fan-out to.
+// FIX: added IRRIGATION query type to route to WEATHER + SOIL agents,
+// consistent with the new IRRIGATION_NEEDED / SKIP_IRRIGATION alert types
+// introduced in the weather agent.
 func (s *OrchestratorServer) resolveAgents(queryType string) []string {
 	routing := map[string][]string{
 		"WEATHER":     {"WEATHER"},
 		"SOIL":        {"SOIL"},
 		"CROP_HEALTH": {"CROP_HEALTH", "WEATHER"},
 		"FERTILIZER":  {"SOIL", "WEATHER", "CROP_HEALTH"},
+		"IRRIGATION":  {"WEATHER", "SOIL"},                 // FIX: new — matches weather agent AWD alerts
 		"FULL":        {"WEATHER", "SOIL", "CROP_HEALTH"},
 	}
 	if agents, ok := routing[queryType]; ok {
 		return agents
 	}
+	// Default: fan out to all three core agents
 	return []string{"WEATHER", "SOIL", "CROP_HEALTH"}
 }
 
-// callAgent — establishes gRPC call to the appropriate Python agent
+// callAgent establishes a gRPC call to the appropriate agent and returns
+// a standardised AgentResult.
+//
+// NOTE: a new gRPC connection is created per call for simplicity.
+// Production systems should maintain a pool of cached, reused connections.
 func (s *OrchestratorServer) callAgent(
 	ctx context.Context, agentType string, req *pb.FarmerQuery,
 ) *pb.AgentResult {
@@ -173,10 +182,13 @@ func (s *OrchestratorServer) callAgent(
 	}
 	s.mu.RUnlock()
 
+	// Fall back to env-configured addresses if agent hasn't registered yet
 	if conn == nil {
-		// Fallback: use env-configured agent addresses
-		host := agentHostFromEnv(agentType)
-		conn = &AgentConnection{AgentType: agentType, Host: host, Port: agentPortFromEnv(agentType)}
+		conn = &AgentConnection{
+			AgentType: agentType,
+			Host:      agentHostFromEnv(agentType),
+			Port:      agentPortFromEnv(agentType),
+		}
 	}
 
 	addr := fmt.Sprintf("%s:%d", conn.Host, conn.Port)
@@ -184,12 +196,7 @@ func (s *OrchestratorServer) callAgent(
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return &pb.AgentResult{
-			AgentName:  agentType,
-			ResultJson: `{"error":"connection failed"}`,
-			Confidence: 0,
-			Status:     "ERROR",
-		}
+		return errorResult(agentType+"_AGENT", err)
 	}
 	defer grpcConn.Close()
 
@@ -197,12 +204,20 @@ func (s *OrchestratorServer) callAgent(
 	defer cancel()
 
 	switch agentType {
+
 	case "WEATHER":
 		client := pb.NewWeatherAgentServiceClient(grpcConn)
+		// FIX (REQUIRED): pass DaysAfterTransplant from the farmer query through
+		// to the weather agent. Without this, all the stage-aware advisory logic
+		// (flowering lock, grain-fill AWD, irrigation prediction) introduced in
+		// the weather agent fix defaults to DAT=0 and always hits the vegetative
+		// path — making FIX-1, FIX-2, FIX-4, and FIX-5 in the weather agent
+		// completely inert.
 		resp, err := client.GetWeatherForecast(callCtx, &pb.WeatherRequest{
-			District:     req.District,
-			Date:         time.Now().Format("2006-01-02"),
-			ForecastDays: 7,
+			District:            req.District,
+			Date:                time.Now().Format("2006-01-02"),
+			ForecastDays:        7,
+			DaysAfterTransplant: req.DaysAfterTransplant, // FIX: was missing
 		})
 		if err != nil {
 			return errorResult("WEATHER_AGENT", err)
@@ -236,22 +251,95 @@ func (s *OrchestratorServer) callAgent(
 	return &pb.AgentResult{Status: "UNKNOWN_AGENT"}
 }
 
+// synthesizeRecommendation builds a human-readable summary from all agent
+// results by reading the actual advisory / recommendation fields out of
+// each agent's JSON payload.
+//
+// FIX: old version was a stub that only printed "[AgentName: ready]" for
+// every result and never inspected the actual data returned by the agents.
+// New version parses each result's JSON and surfaces the advisory text,
+// alert type, and recommendation where present.
 func (s *OrchestratorServer) synthesizeRecommendation(
 	results []*pb.AgentResult, req *pb.FarmerQuery,
 ) string {
-	parts := fmt.Sprintf("Advisory for %s (District: %s, Season: %s): ",
-		req.FarmerId, req.District, req.Season)
+	summary := fmt.Sprintf(
+		"Advisory for farmer %s | District: %s | Season: %s | DAT: %d\n",
+		req.FarmerId, req.District, req.Season, req.DaysAfterTransplant,
+	)
+	summary += "─────────────────────────────────────────\n"
+
 	for _, r := range results {
-		if r.Status == "OK" {
-			parts += fmt.Sprintf("[%s: ready] ", r.AgentName)
+		if r.Status != "OK" {
+			summary += fmt.Sprintf("• %s: unavailable (status=%s)\n", r.AgentName, r.Status)
+			continue
 		}
+
+		var payload map[string]interface{}
+		if err := json.Unmarshal([]byte(r.ResultJson), &payload); err != nil {
+			summary += fmt.Sprintf("• %s: could not parse response\n", r.AgentName)
+			continue
+		}
+
+		line := fmt.Sprintf("• %s:\n", r.AgentName)
+
+		// Weather agent fields
+		if advisory, ok := payload["farming_advisory"].(string); ok && advisory != "" {
+			line += fmt.Sprintf("    Advisory : %s\n", advisory)
+		}
+		if condition, ok := payload["weather_condition"].(string); ok && condition != "" {
+			line += fmt.Sprintf("    Condition: %s\n", condition)
+		}
+		if rain, ok := payload["rainfall_mm"].(float64); ok {
+			line += fmt.Sprintf("    Rainfall : %.1f mm today\n", rain)
+		}
+
+		// Metadata notes (carries our irrigation water-balance prediction)
+		if meta, ok := payload["metadata"].(map[string]interface{}); ok {
+			if notes, ok := meta["notes"].(string); ok && notes != "" {
+				line += fmt.Sprintf("    Note     : %s\n", notes)
+			}
+		}
+
+		// Soil agent fields
+		if rec, ok := payload["recommendation"].(string); ok && rec != "" {
+			line += fmt.Sprintf("    Recommendation: %s\n", rec)
+		}
+		if health, ok := payload["soil_health_score"].(float64); ok {
+			line += fmt.Sprintf("    Soil Health Score: %.1f/10\n", health)
+		}
+
+		// Crop health agent fields
+		if status, ok := payload["crop_status"].(string); ok && status != "" {
+			line += fmt.Sprintf("    Crop Status: %s\n", status)
+		}
+		if disease, ok := payload["disease_risk"].(string); ok && disease != "" {
+			line += fmt.Sprintf("    Disease Risk: %s\n", disease)
+		}
+
+		summary += line
 	}
-	return parts
+
+	summary += "─────────────────────────────────────────\n"
+	summary += fmt.Sprintf("Overall confidence: %.0f%%\n",
+		averageConfidence(results)*100)
+
+	return summary
 }
 
 // ─────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────
+
+func averageConfidence(results []*pb.AgentResult) float32 {
+	if len(results) == 0 {
+		return 0
+	}
+	var total float32
+	for _, r := range results {
+		total += r.Confidence
+	}
+	return total / float32(len(results))
+}
 
 func marshalResult(name string, v interface{}, conf float32) *pb.AgentResult {
 	b, _ := json.Marshal(v)
@@ -322,7 +410,7 @@ func main() {
 
 	orchestrator := NewOrchestratorServer()
 	pb.RegisterOrchestratorServiceServer(grpcServer, orchestrator)
-	reflection.Register(grpcServer) // for grpcurl / debugging
+	reflection.Register(grpcServer) // enables grpcurl / debug introspection
 
 	log.Printf("[ORCHESTRATOR] gRPC server listening on :%s", port)
 	if err := grpcServer.Serve(lis); err != nil {
