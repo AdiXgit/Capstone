@@ -1,48 +1,246 @@
 syntax = "proto3";
-
 package paddy;
 
-// ── Soil Agent ──────────────────────────────────────────
-service SoilAgent {
-  rpc GetNPKProfile    (DistrictRequest)      returns (NPKResponse);
-  rpc GetFertilizerRec (FertilizerRequest)    returns (FertilizerResponse);
-  rpc GetSoilTrend     (DistrictRequest)      returns (SoilTrendResponse);
+option go_package = "github.com/AdiXgit/Capstone/proto";
+
+// ═══════════════════════════════════════════════════════════════
+// SHARED METADATA
+// Attached to every agent response so the orchestrator can log
+// which agent answered, when, and with what confidence.
+// ═══════════════════════════════════════════════════════════════
+
+message AgentMetadata {
+  string agent_id   = 1;
+  string agent_name = 2;
+  string timestamp  = 3;
+  float  confidence = 4;
+  string notes      = 5; // FIX: carries water-balance irrigation prediction text
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ORCHESTRATOR SERVICE
+// Central router — the dashboard / API gateway calls this.
+// ═══════════════════════════════════════════════════════════════
+
+service OrchestratorService {
+  rpc RegisterAgent   (AgentRegistration)  returns (RegistrationAck);
+  rpc RouteQuery      (FarmerQuery)        returns (OrchestratorResponse);
+  rpc GetSystemStatus (StatusRequest)      returns (SystemStatusResponse);
+}
+
+message AgentRegistration {
+  string agent_id   = 1;
+  string agent_name = 2;
+  string agent_type = 3; // "WEATHER" | "SOIL" | "CROP_HEALTH"
+  string host       = 4;
+  int32  port       = 5;
+}
+
+message RegistrationAck {
+  bool   success = 1;
+  string message = 2;
+}
+
+// FIX: added days_after_transplant so the orchestrator can pass crop growth
+// stage through to the weather agent, enabling stage-aware irrigation logic
+// (flowering lock, grain-fill AWD, water-balance prediction).
+message FarmerQuery {
+  string query_id              = 1;
+  string farmer_id             = 2;
+  string district              = 3;
+  string season                = 4; // "Kharif" | "Rabi"
+  string query_type            = 5; // "WEATHER" | "SOIL" | "CROP_HEALTH" | "FERTILIZER" | "IRRIGATION" | "FULL"
+  int32  days_after_transplant = 6; // FIX: new — days since transplanting (0 if unknown)
+}
+
+message OrchestratorResponse {
+  string             query_id           = 1;
+  string             recommendation     = 2; // synthesized human-readable summary
+  repeated AgentResult agent_results   = 3;
+  float              overall_confidence = 4;
+  string             timestamp          = 5;
+}
+
+message AgentResult {
+  string agent_name  = 1;
+  string result_json = 2; // raw JSON payload from the agent
+  float  confidence  = 3;
+  string status      = 4; // "OK" | "ERROR" | "UNKNOWN_AGENT"
+}
+
+message StatusRequest {}
+
+message SystemStatusResponse {
+  string          orchestrator_status    = 1;
+  repeated string active_agents          = 2;
+  int32           total_queries_handled  = 3;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WEATHER AGENT SERVICE
+// ═══════════════════════════════════════════════════════════════
+
+service WeatherAgentService {
+  rpc GetWeatherForecast  (WeatherRequest)        returns (WeatherResponse);
+  rpc GetWeatherAlert     (WeatherRequest)        returns (WeatherAlertResponse);
+  rpc GetHistoricalWeather(HistoricalWeatherReq)  returns (HistoricalWeatherResp);
+}
+
+// FIX: added days_after_transplant — required for stage-aware advisory and
+// irrigation alert logic (IRRI AWD flowering window, grain-fill, pre-harvest).
+message WeatherRequest {
+  string district              = 1;
+  string date                  = 2;
+  int32  forecast_days         = 3;
+  int32  days_after_transplant = 4; // FIX: new — was missing, caused all stage logic to default to DAT=0
+}
+
+message WeatherResponse {
+  AgentMetadata      metadata          = 1;
+  string             district          = 2;
+  float              temperature_max   = 3;
+  float              temperature_min   = 4;
+  float              temperature_avg   = 5;
+  float              rainfall_mm       = 6;
+  float              humidity_percent  = 7;
+  float              wind_speed_kmph   = 8;
+  float              sunshine_hours    = 9;
+  string             weather_condition = 10;
+  string             farming_advisory  = 11;
+  repeated DailyForecast forecast      = 12;
+}
+
+message DailyForecast {
+  string date          = 1;
+  float  temp_max      = 2;
+  float  temp_min      = 3;
+  float  rainfall_prob = 4;
+  string condition     = 5;
+}
+
+// FIX: added IRRIGATION_NEEDED, SKIP_IRRIGATION, FLOWERING_FLOOD_REQUIRED
+// to the set of possible alert_type values (documented in comment below).
+// Alert types:
+//   FLOOD_RISK               — rain > 50 mm, HIGH severity
+//   HEAVY_RAIN               — rain 20–50 mm → now fires as SKIP_IRRIGATION instead
+//   SKIP_IRRIGATION          — rain 20–50 mm, LOW  severity (FIX: new)
+//   HEAT_STRESS              — temp > 40°C,  MEDIUM severity
+//   DISEASE_RISK             — humidity > 90%, MEDIUM severity
+//   IRRIGATION_NEEDED        — low rain today + low 7-day forecast, MEDIUM (FIX: new)
+//   FLOWERING_FLOOD_REQUIRED — DAT 55-70, keep flooded, LOW severity (FIX: new)
+message WeatherAlertResponse {
+  AgentMetadata metadata        = 1;
+  bool          has_alert       = 2;
+  string        alert_type      = 3;
+  string        severity        = 4; // "HIGH" | "MEDIUM" | "LOW"
+  string        message         = 5;
+  string        action_required = 6;
+}
+
+message HistoricalWeatherReq {
+  string district   = 1;
+  string start_date = 2;
+  string end_date   = 3;
+}
+
+message HistoricalWeatherResp {
+  AgentMetadata          metadata       = 1;
+  repeated WeatherResponse records      = 2;
+  float                  avg_temp       = 3;
+  float                  total_rainfall = 4;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SOIL AGENT SERVICE
+// (your existing messages, unchanged — only added AgentMetadata
+//  to responses so the orchestrator can log agent provenance)
+// ═══════════════════════════════════════════════════════════════
+
+service SoilAgentService {
+  rpc GetNPKProfile    (DistrictRequest)   returns (NPKResponse);
+  rpc GetFertilizerRec (FertilizerRequest) returns (FertilizerResponse);
+  rpc GetSoilTrend     (DistrictRequest)   returns (SoilTrendResponse);
+  rpc GetSoilHealth    (SoilRequest)       returns (SoilHealthResponse);
 }
 
 message DistrictRequest {
   string district = 1;
 }
 
-message FertilizerRequest {
+message SoilRequest {
   string district = 1;
-  float  nitrogen  = 2;
-  float  phosphorus = 3;
-  float  potassium = 4;
-  float  ph        = 5;
-  float  organic_carbon = 6;
-  string season    = 7;  // "Kharif" or "Rabi"
+  string season   = 2;
+}
+
+message FertilizerRequest {
+  string district        = 1;
+  float  nitrogen        = 2;
+  float  phosphorus      = 3;
+  float  potassium       = 4;
+  float  ph              = 5;
+  float  organic_carbon  = 6;
+  string season          = 7; // "Kharif" | "Rabi"
 }
 
 message NPKResponse {
-  string district   = 1;
-  float  nitrogen   = 2;
-  float  phosphorus = 3;
-  float  potassium  = 4;
+  AgentMetadata metadata  = 1;
+  string district         = 2;
+  float  nitrogen         = 3;
+  float  phosphorus       = 4;
+  float  potassium        = 5;
 }
 
 message FertilizerResponse {
-  float  urea_kg_per_acre   = 1;
-  float  dap_kg_per_acre    = 2;
-  float  potash_kg_per_acre = 3;
-  string timing_advice      = 4;
-  string season             = 5;
+  AgentMetadata metadata         = 1;
+  float  urea_kg_per_acre        = 2;
+  float  dap_kg_per_acre         = 3;
+  float  potash_kg_per_acre      = 4;
+  string timing_advice           = 5;
+  string season                  = 6;
 }
 
 message SoilTrendResponse {
-  string district          = 1;
-  float  ph_slope          = 2;
-  float  ph_last_value     = 3;
-  float  oc_slope          = 4;
-  float  oc_last_value     = 5;
-  string interpretation    = 6;
+  AgentMetadata metadata    = 1;
+  string district           = 2;
+  float  ph_slope           = 3;
+  float  ph_last_value      = 4;
+  float  oc_slope           = 5;
+  float  oc_last_value      = 6;
+  string interpretation     = 7;
+}
+
+// Added for orchestrator callAgent("SOIL") path which calls GetSoilHealth
+message SoilHealthResponse {
+  AgentMetadata metadata       = 1;
+  string district              = 2;
+  float  soil_health_score     = 3; // 0–10
+  string recommendation        = 4;
+  float  nitrogen              = 5;
+  float  phosphorus            = 6;
+  float  potassium             = 7;
+  float  ph                    = 8;
+  float  organic_carbon        = 9;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CROP HEALTH AGENT SERVICE
+// ═══════════════════════════════════════════════════════════════
+
+service CropHealthAgentService {
+  rpc GetCropHealthStatus (CropHealthRequest)  returns (CropHealthResponse);
+}
+
+message CropHealthRequest {
+  string district = 1;
+  string season   = 2;
+  int32  year     = 3;
+}
+
+message CropHealthResponse {
+  AgentMetadata metadata    = 1;
+  string district           = 2;
+  string crop_status        = 3; // "HEALTHY" | "STRESSED" | "DISEASED" | "UNKNOWN"
+  string disease_risk       = 4; // "LOW" | "MEDIUM" | "HIGH"
+  string recommendation     = 5;
+  float  confidence         = 6;
 }
