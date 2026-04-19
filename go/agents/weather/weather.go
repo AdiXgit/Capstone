@@ -3,6 +3,23 @@
 // Weather Intelligence Agent — powered by Open-Meteo (free, no API key)
 // API docs: https://open-meteo.com/en/docs
 // Covers all 29 Karnataka paddy districts with real-time + 16-day forecast
+//
+// ── FIXES (IRRI AWD-aligned irrigation logic) ──────────────────────────────
+// FIX-1  farmingAdvisory() is now crop-stage-aware instead of a flat
+//        condition→string map. It handles vegetative, flowering, and
+//        grain-filling stages with IRRI-prescribed language.
+// FIX-2  checkAlert() gains two new alert types:
+//          • IRRIGATION_NEEDED — water-balance proxy triggers re-flood
+//          • SKIP_IRRIGATION   — heavy rain already replenishing field
+//        and accepts daysAfterTransplant + 7-day forecast rain sum so
+//        the flowering window (DAT 55-70) is respected as a hard lock.
+// FIX-3  estimateWaterBalance() implements a simple daily ET-based
+//        water balance over the 7-day forecast to predict the earliest
+//        day irrigation will be needed (returns -1 if not needed).
+// FIX-4  GetWeatherForecast() now derives DaysAfterTransplant from the
+//        request field and threads it through advisory + alert calls.
+// FIX-5  GetWeatherAlert() similarly accepts and uses DAT.
+// ───────────────────────────────────────────────────────────────────────────
 
 package main
 
@@ -236,32 +253,148 @@ func wmoCondition(code int) string {
 }
 
 // ─────────────────────────────────────────────
-// FARMING ADVISORY + ALERTS
+// FIX-3: WATER BALANCE ESTIMATOR
+//
+// Uses a simplified daily ET for tropical lowland rice (6 mm/day, which
+// is the IRRI mid-range for Karnataka conditions) to estimate how many
+// days until the field hits the IRRI AWD re-flood threshold of −150 mm
+// (i.e. 15 cm below soil surface).
+//
+// Assumes the field was just re-flooded to 5 cm (50 mm) standing water
+// at the time of the call. Returns the forecast day index (1-based) when
+// irrigation is needed, or -1 if rainfall keeps the balance safe across
+// the entire window.
 // ─────────────────────────────────────────────
 
-func farmingAdvisory(condition string, temp, rain, humidity float64) string {
-	m := map[string]string{
-		"CLEAR_SKY":     "Good conditions for all field operations. Schedule irrigation if dry 3+ days.",
-		"PARTLY_CLOUDY": "Suitable for regular farm operations including spraying.",
-		"FOGGY":         "High humidity — watch for fungal diseases. Delay spraying until fog clears.",
-		"DRIZZLE":       "Light rain — avoid fertilizer application. Check disease pressure.",
-		"MODERATE_RAIN": "Good for transplanting. Ensure field bunds are intact.",
-		"SHOWERS":       "Light showers. Safe for most operations. Monitor soil moisture.",
-		"HEAVY_RAIN":    "Avoid field operations. Check drainage channels. Delay fertilizer 48h.",
-		"THUNDERSTORM":  "Stay off the field. Secure farm equipment. Check damage after storm.",
-		"NORMAL":        "Conditions suitable for regular field operations.",
+const (
+	dailyETc        = 6.0   // mm/day — crop evapotranspiration for lowland rice, Karnataka
+	initialPonding  = 50.0  // mm — 5 cm standing water after re-flood (IRRI target)
+	awdThresholdMM  = -150.0 // mm — 15 cm below surface = IRRI "safe AWD" re-flood trigger
+)
+
+// estimateWaterBalance returns the 1-based day index in the forecast when
+// irrigation will be needed, or -1 if the balance stays above threshold.
+func estimateWaterBalance(forecastRain []float64) int {
+	balance := initialPonding
+	for i, rain := range forecastRain {
+		balance += rain - dailyETc
+		if balance <= awdThresholdMM {
+			return i + 1
+		}
 	}
-	if temp > 40 {
-		return "Extreme heat — irrigate at dawn only. Watch for heat stress in young plants."
-	}
-	if humidity > 90 {
-		return "Very high humidity — scout for blast and sheath blight. Consider fungicide."
-	}
-	if a, ok := m[condition]; ok {
-		return a
-	}
-	return "Monitor field conditions. Consult local Krishi Vigyan Kendra if uncertain."
+	return -1
 }
+
+// forecastRainSum returns the total rainfall over the next n days of forecast.
+func forecastRainSum(forecastRain []float64, n int) float64 {
+	total := 0.0
+	limit := n
+	if limit > len(forecastRain) {
+		limit = len(forecastRain)
+	}
+	for i := 0; i < limit; i++ {
+		total += forecastRain[i]
+	}
+	return total
+}
+
+// ─────────────────────────────────────────────
+// FIX-1: STAGE-AWARE FARMING ADVISORY
+//
+// OLD: flat map of condition → generic string, no crop stage awareness,
+//      "irrigate if dry 3+ days" heuristic not grounded in any standard.
+//
+// NEW: three explicit growth windows derived from days after transplanting
+//      (DAT), matching IRRI AWD recommendations:
+//        • Vegetative  (DAT  0–54): safe AWD, monitor water tube
+//        • Flowering   (DAT 55–70): hard continuous flood, no AWD
+//        • Grain fill  (DAT 71–100): resume safe AWD
+//      Weather overlays (heat, humidity, rain) are applied on top.
+// ─────────────────────────────────────────────
+
+func farmingAdvisory(condition string, temp, rain, humidity float64, daysAfterTransplant int) string {
+
+	// ── Stage: Flowering window — water is non-negotiable ──────────────
+	// IRRI: "From one week before to one week after flowering, the field
+	// should remain flooded." Typical flowering at DAT ~62 for Karnataka
+	// varieties; window is DAT 55–70.
+	if daysAfterTransplant >= 55 && daysAfterTransplant <= 70 {
+		return "FLOWERING STAGE: Keep field continuously flooded to 5 cm standing water. " +
+			"Do NOT allow water level to drop — this is the most yield-critical window. " +
+			"Inspect bunds daily. Delay all pesticide/fertilizer spraying until after flowering."
+	}
+
+	// ── Stage: Grain filling / ripening ────────────────────────────────
+	// IRRI: "After flowering, water level can drop to 15 cm below surface
+	// before re-flooding." Resume safe AWD here.
+	if daysAfterTransplant > 70 && daysAfterTransplant <= 100 {
+		if rain > 20 {
+			return "GRAIN FILLING: Heavy rain received — skip irrigation. " +
+				"Check bunds and drainage. Field is likely replenished."
+		}
+		return "GRAIN FILLING (safe AWD): Check field water tube — if water level is at " +
+			"15 cm below soil surface, re-flood to 5 cm standing water. " +
+			"Drain field completely 7–10 days before planned harvest."
+	}
+
+	// ── Stage: Pre-harvest drain ────────────────────────────────────────
+	if daysAfterTransplant > 100 {
+		return "PRE-HARVEST: Drain field 7–10 days before harvest to firm the soil " +
+			"for machinery. Do not irrigate further unless crop shows severe wilting."
+	}
+
+	// ── Vegetative stage (DAT 0–54): safe AWD with weather overlays ─────
+
+	// Heavy rain: field is being replenished — skip irrigation
+	if rain > 20 {
+		return "Heavy rain received — skip irrigation. Ensure drainage bunds are intact. " +
+			"Delay fertilizer application by 48 hours to avoid nutrient runoff."
+	}
+
+	// Extreme heat: irrigation timing matters more than frequency
+	if temp > 40 {
+		return "Extreme heat alert: Irrigate at dawn only to minimise evaporation losses. " +
+			"Keep field water level at 5 cm to buffer heat stress in young plants."
+	}
+
+	// High humidity: disease pressure overrides irrigation advice
+	if humidity > 90 {
+		return "Very high humidity — scout for rice blast and sheath blight. " +
+			"Do not irrigate until humidity drops. Wet foliage increases fungal risk."
+	}
+
+	// Foggy / drizzle: light moisture, watch disease
+	if condition == "FOGGY" || condition == "DRIZZLE" {
+		return "Low-intensity moisture — delay spraying until conditions clear. " +
+			"Check field water tube; irrigate only if water is at 15 cm below surface."
+	}
+
+	// Thunderstorm: safety + damage check
+	if condition == "THUNDERSTORM" {
+		return "Stay off the field during the storm. After it passes, inspect bunds for " +
+			"breaches and drainage channels for blockages before resuming field operations."
+	}
+
+	// ── Default AWD advisory (vegetative, normal conditions) ────────────
+	// Key change from old code: no "dry 3 days" heuristic.
+	// The trigger is always soil water depth, not elapsed days or sky condition.
+	return "Check field water tube daily. Irrigate ONLY when water level reaches " +
+		"15 cm below soil surface — then re-flood to 5 cm standing water. " +
+		"Apply nitrogen fertilizer on dry soil just before re-irrigation for best uptake. " +
+		"Do not irrigate based on sky condition or calendar alone (IRRI AWD protocol)."
+}
+
+// ─────────────────────────────────────────────
+// FIX-2: EXTENDED ALERT CHECKER
+//
+// OLD: 4 alert types (FLOOD_RISK, HEAT_STRESS, DISEASE_RISK, HEAVY_RAIN),
+//      no irrigation alert, no crop-stage awareness.
+//
+// NEW: adds IRRIGATION_NEEDED and SKIP_IRRIGATION alert types;
+//      respects the IRRI flowering-window hard lock;
+//      uses 7-day forecast rain sum as a forward-looking input
+//      rather than reacting only to today's reading.
+// ─────────────────────────────────────────────
 
 type alertResult struct {
 	hasAlert bool
@@ -271,25 +404,96 @@ type alertResult struct {
 	action   string
 }
 
-func checkAlert(temp, rain, humidity float64, district string) alertResult {
-	switch {
-	case rain > 50:
-		return alertResult{true, "FLOOD_RISK", "HIGH",
-			fmt.Sprintf("Extremely heavy rain (%.1fmm) — flood risk in %s", rain, district),
-			"Open drainage outlets immediately. Move harvested produce to dry storage."}
-	case temp > 40:
-		return alertResult{true, "HEAT_STRESS", "MEDIUM",
-			fmt.Sprintf("Temperature spike (%.1f°C) in %s", temp, district),
-			"Irrigate early morning. Apply mulch to reduce soil temperature."}
-	case humidity > 90:
-		return alertResult{true, "DISEASE_RISK", "MEDIUM",
-			fmt.Sprintf("Very high humidity (%.0f%%) in %s — fungal disease risk", humidity, district),
-			"Scout for blast and sheath blight. Consider preventive fungicide spray."}
-	case rain > 20:
-		return alertResult{true, "HEAVY_RAIN", "LOW",
-			fmt.Sprintf("Heavy rain (%.1fmm) in %s", rain, district),
-			"Ensure field drainage is working. Delay fertilizer application."}
+func checkAlert(
+	temp, rain, humidity float64,
+	district string,
+	daysAfterTransplant int,  // FIX-2: new param — crop growth stage
+	sevenDayRainSum float64,  // FIX-2: new param — forward-looking rain
+) alertResult {
+
+	isFloweringWindow := daysAfterTransplant >= 55 && daysAfterTransplant <= 70
+
+	// ── SKIP_IRRIGATION: heavy rain already replenishing field ──────────
+	// Moved above flood check so it fires first on 20–50 mm days.
+	if rain > 20 && rain <= 50 {
+		return alertResult{
+			hasAlert: true,
+			aType:    "SKIP_IRRIGATION",
+			severity: "LOW",
+			message:  fmt.Sprintf("Heavy rain (%.1f mm) in %s — field is being replenished naturally.", rain, district),
+			action:   "Do not irrigate today. Inspect bunds and drainage outlets. Delay fertilizer by 48 hours.",
+		}
 	}
+
+	// ── FLOOD_RISK: extreme rainfall ────────────────────────────────────
+	if rain > 50 {
+		return alertResult{
+			hasAlert: true,
+			aType:    "FLOOD_RISK",
+			severity: "HIGH",
+			message:  fmt.Sprintf("Extremely heavy rain (%.1f mm) — flood risk in %s.", rain, district),
+			action:   "Open drainage outlets immediately. Move harvested produce to dry storage.",
+		}
+	}
+
+	// ── HEAT_STRESS ─────────────────────────────────────────────────────
+	if temp > 40 {
+		return alertResult{
+			hasAlert: true,
+			aType:    "HEAT_STRESS",
+			severity: "MEDIUM",
+			message:  fmt.Sprintf("Temperature spike (%.1f°C) in %s.", temp, district),
+			action:   "Irrigate at dawn only. Maintain 5 cm standing water to buffer heat. Apply mulch on bunds.",
+		}
+	}
+
+	// ── DISEASE_RISK ─────────────────────────────────────────────────────
+	if humidity > 90 {
+		return alertResult{
+			hasAlert: true,
+			aType:    "DISEASE_RISK",
+			severity: "MEDIUM",
+			message:  fmt.Sprintf("Very high humidity (%.0f%%) in %s — fungal disease risk.", humidity, district),
+			action:   "Scout for blast and sheath blight. Consider preventive fungicide spray. Delay irrigation.",
+		}
+	}
+
+	// ── IRRIGATION_NEEDED (FIX-2) ────────────────────────────────────────
+	// Trigger only when:
+	//   • NOT in the flowering window (IRRI hard lock: keep flooded ±1 week of flowering)
+	//   • Today's rain is negligible (< 2 mm)
+	//   • 7-day forecast rain is also low (< 10 mm total) — field won't self-replenish
+	// This is a weather-based proxy for the IRRI AWD soil-tube trigger
+	// (actual trigger = water level at 15 cm below surface).
+	if !isFloweringWindow && rain < 2.0 && sevenDayRainSum < 10.0 {
+		return alertResult{
+			hasAlert: true,
+			aType:    "IRRIGATION_NEEDED",
+			severity: "MEDIUM",
+			message: fmt.Sprintf(
+				"Water deficit likely in %s — no significant rain today (%.1f mm) "+
+					"and only %.1f mm forecast over the next 7 days.",
+				district, rain, sevenDayRainSum,
+			),
+			action: "Check field water tube. If water is at 15 cm below soil surface, " +
+				"re-flood to 5 cm standing water (IRRI safe AWD protocol). " +
+				"Apply nitrogen fertilizer on dry soil just before re-irrigating.",
+		}
+	}
+
+	// ── FLOWERING WINDOW REMINDER ────────────────────────────────────────
+	// If we're in the flowering window and no emergency alert fired above,
+	// send a low-severity reminder to keep the field flooded.
+	if isFloweringWindow {
+		return alertResult{
+			hasAlert: true,
+			aType:    "FLOWERING_FLOOD_REQUIRED",
+			severity: "LOW",
+			message:  fmt.Sprintf("Crop in flowering window (DAT %d) in %s.", daysAfterTransplant, district),
+			action:   "Maintain continuous 5 cm standing water. Do not allow field to dry. Check bunds daily.",
+		}
+	}
+
 	return alertResult{}
 }
 
@@ -302,10 +506,12 @@ type weatherServer struct {
 	api *apiClient
 }
 
+// FIX-4: GetWeatherForecast now reads DaysAfterTransplant from the request
+// and passes it into farmingAdvisory so the advisory is stage-aware.
 func (s *weatherServer) GetWeatherForecast(
 	ctx context.Context, req *pb.WeatherRequest,
 ) (*pb.WeatherResponse, error) {
-	log.Printf("[WEATHER] Forecast → %s", req.District)
+	log.Printf("[WEATHER] Forecast → %s (DAT=%d)", req.District, req.DaysAfterTransplant)
 	lat, lon := getCoords(req.District)
 
 	data, err := s.api.fetchCurrent(lat, lon)
@@ -315,7 +521,10 @@ func (s *weatherServer) GetWeatherForecast(
 
 	cur := data.Current
 	condition := wmoCondition(cur.WeatherCode)
-	advisory := farmingAdvisory(condition, cur.Temp2m, cur.Precip, float64(cur.Humidity))
+
+	// FIX-4: pass DaysAfterTransplant into advisory
+	dat := int(req.DaysAfterTransplant)
+	advisory := farmingAdvisory(condition, cur.Temp2m, cur.Precip, float64(cur.Humidity), dat)
 
 	// sunshine: seconds → hours
 	sunH := 0.0
@@ -356,12 +565,26 @@ func (s *weatherServer) GetWeatherForecast(
 		}
 	}
 
+	// FIX-3: compute irrigation day prediction and embed in response metadata
+	irrigationDay := estimateWaterBalance(data.Daily.PrecipSum)
+	irrigationNote := ""
+	if irrigationDay > 0 {
+		irrigationNote = fmt.Sprintf(
+			"Water balance model predicts irrigation needed in ~%d day(s) "+
+				"(IRRI AWD proxy: field water tube at 15 cm below surface).",
+			irrigationDay,
+		)
+	} else {
+		irrigationNote = "Forecast rainfall sufficient — no irrigation predicted in the next 7 days."
+	}
+
 	return &pb.WeatherResponse{
 		Metadata: &pb.AgentMetadata{
 			AgentId:    "weather-agent-001",
 			AgentName:  "Weather Intelligence Agent",
 			Timestamp:  time.Now().UTC().Format(time.RFC3339),
 			Confidence: 0.93,
+			Notes:      irrigationNote, // surface the water balance prediction
 		},
 		District:         req.District,
 		TemperatureMax:   float32(tempMax),
@@ -377,6 +600,7 @@ func (s *weatherServer) GetWeatherForecast(
 	}, nil
 }
 
+// FIX-5: GetWeatherAlert accepts and uses DaysAfterTransplant + 7-day rain sum.
 func (s *weatherServer) GetWeatherAlert(
 	ctx context.Context, req *pb.WeatherRequest,
 ) (*pb.WeatherAlertResponse, error) {
@@ -386,7 +610,16 @@ func (s *weatherServer) GetWeatherAlert(
 		return &pb.WeatherAlertResponse{HasAlert: false}, nil
 	}
 	cur := data.Current
-	a := checkAlert(cur.Temp2m, cur.Precip, float64(cur.Humidity), req.District)
+
+	// FIX-5: compute 7-day forward rain sum for IRRIGATION_NEEDED check
+	sevenDayRain := forecastRainSum(data.Daily.PrecipSum, 7)
+
+	a := checkAlert(
+		cur.Temp2m, cur.Precip, float64(cur.Humidity),
+		req.District,
+		int(req.DaysAfterTransplant), // FIX-5
+		sevenDayRain,                 // FIX-5
+	)
 
 	return &pb.WeatherAlertResponse{
 		Metadata: &pb.AgentMetadata{
@@ -508,12 +741,17 @@ func main() {
 	}
 }
 
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+
 func safeF(s []float64, i int) float64 {
 	if i < len(s) {
 		return s[i]
 	}
 	return 0
 }
+
 func minInt(a, b int) int {
 	if a < b {
 		return a
