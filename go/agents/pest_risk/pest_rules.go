@@ -1,6 +1,9 @@
 // go/agents/pest_risk/pest_rules.go
 // OWNER: Aditya
-// Pest Risk Rulebook — encodes Karnataka KVK pest surveillance guidelines
+// Pest Risk Rulebook — ETL thresholds sourced from NIPHM (National Institute
+// of Plant Health Management, Ministry of Agriculture & Farmers Welfare,
+// Government of India), "Integrated Pest Management Package for Rice"
+// https://niphm.gov.in/IPMPackages/Rice.pdf
 // Pure rule-based lookup, no ML, no external dataset required
 
 package main
@@ -14,10 +17,13 @@ type PestRule struct {
 	Risk         string   // "Low" | "Medium" | "High"
 	Signs        string
 	Action       string
-	ETL          string // Economic Threshold Level
+	ETL          string // Economic Threshold Level (NIPHM verified where noted)
 }
 
-// PestRulebook — Karnataka KVK paddy pest calendar, encoded as rules.
+// PestRulebook — paddy pest calendar. ETL values verified against NIPHM's
+// official Rice IPM Package. Trigger conditions (temp/humidity/stage) and
+// pesticide names reflect standard agronomic practice; exact dosages are
+// typical field recommendations, not lifted from one specific circular.
 var PestRulebook = []PestRule{
 	{
 		Pest:         "Brown Plant Hopper",
@@ -27,7 +33,7 @@ var PestRulebook = []PestRule{
 		Risk:         "High",
 		Signs:        "Honeydew deposits on lower leaves, hopper burn in circular patches",
 		Action:       "Apply Imidacloprid 0.3ml/L. Drain standing water. Avoid excess Nitrogen.",
-		ETL:          "5-10 hoppers per hill",
+		ETL:          "10-15 hoppers per hill", // NIPHM verified (was: 5-10)
 	},
 	{
 		Pest:         "Rice Blast",
@@ -37,7 +43,7 @@ var PestRulebook = []PestRule{
 		Risk:         "High",
 		Signs:        "Diamond-shaped lesions on leaves with grey centers",
 		Action:       "Spray Tricyclazole 0.6g/L or Isoprothiolane 1.5ml/L preventively.",
-		ETL:          "5% leaf area affected",
+		ETL:          "3-5 lesions per leaf", // NIPHM verified (was: 5% leaf area affected)
 	},
 	{
 		Pest:         "Stem Borer",
@@ -47,7 +53,7 @@ var PestRulebook = []PestRule{
 		Risk:         "Medium",
 		Signs:        "Dead hearts (vegetative stage) or white ears (reproductive stage)",
 		Action:       "Apply Cartap Hydrochloride 1kg/acre or release Trichogramma cards.",
-		ETL:          "5% dead hearts or 2% white ears",
+		ETL:          "2 egg-masses/m² or 10% dead hearts or 1 moth/m²", // NIPHM verified (was: 5% dead hearts)
 	},
 	{
 		Pest:         "Leaf Folder",
@@ -57,7 +63,7 @@ var PestRulebook = []PestRule{
 		Risk:         "Medium",
 		Signs:        "Longitudinally folded leaves with white scraping damage inside",
 		Action:       "Apply Chlorantraniliprole 0.3ml/L if >2 damaged leaves per hill.",
-		ETL:          "2 damaged leaves per hill",
+		ETL:          "2 fully damaged leaves (FDL) per hill", // NIPHM verified, matches original
 	},
 	{
 		Pest:         "Sheath Blight",
@@ -67,7 +73,7 @@ var PestRulebook = []PestRule{
 		Risk:         "Medium",
 		Signs:        "Irregular greenish-grey lesions on leaf sheath near water line",
 		Action:       "Spray Hexaconazole 2ml/L or Validamycin 2ml/L.",
-		ETL:          "Lesions reaching flag leaf on 20% of tillers",
+		ETL:          "Lesions 5-6mm length & 2-3 infected plants/m²", // NIPHM verified (was: 20% of tillers)
 	},
 	{
 		Pest:         "False Smut",
@@ -77,7 +83,7 @@ var PestRulebook = []PestRule{
 		Risk:         "Low",
 		Signs:        "Large velvety green spore balls replacing individual grains",
 		Action:       "Spray Propiconazole 1ml/L at booting stage (preventive only).",
-		ETL:          "Cosmetic — affects grain quality, not yield significantly",
+		ETL:          "Cosmetic — affects grain quality, not in NIPHM primary ETL table",
 	},
 	{
 		Pest:         "Gall Midge",
@@ -87,7 +93,7 @@ var PestRulebook = []PestRule{
 		Risk:         "Medium",
 		Signs:        "Silver shoots (onion-like tubular leaves) instead of normal tillers",
 		Action:       "Apply Fipronil 0.3g/kg seed treatment. Remove silver shoots by hand.",
-		ETL:          "5% silver shoots",
+		ETL:          "1 gall/m² or 10% silver shoots", // NIPHM verified (was: 5% silver shoots)
 	},
 }
 
