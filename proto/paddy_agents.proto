@@ -203,14 +203,16 @@ message MarketRequest {
 }
 
 message MarketResponse {
-  AgentMetadata metadata       = 1;
-  string        district        = 2;
-  float         current_price  = 3;
+  AgentMetadata metadata      = 1;
+  string        variety        = 2;
+  float         current_price = 3;
   float         avg_30day      = 4;
   float         avg_90day      = 5;
   string        price_trend    = 6;   // "rising" | "falling" | "stable"
-  string        best_month      = 7;
-  string        advisory         = 8;
+  string        market_demand = 7;   // "High" | "Medium" | "Low"
+  string        supply_status  = 8;   // "Surplus" | "Normal" | "Deficit"
+  string        best_month      = 9;
+  string        advisory         = 10;
 }
 
 // ══════════════════════════════════════════════════════

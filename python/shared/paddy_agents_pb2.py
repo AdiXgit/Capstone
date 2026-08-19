@@ -24,23 +24,70 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12paddy_agents.proto\x12\x05paddy\"#\n\x0f\x44istrictRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\"\x92\x01\n\x11\x46\x65rtilizerRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x10\n\x08nitrogen\x18\x02 \x01(\x02\x12\x12\n\nphosphorus\x18\x03 \x01(\x02\x12\x11\n\tpotassium\x18\x04 \x01(\x02\x12\n\n\x02ph\x18\x05 \x01(\x02\x12\x16\n\x0eorganic_carbon\x18\x06 \x01(\x02\x12\x0e\n\x06season\x18\x07 \x01(\t\"X\n\x0bNPKResponse\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x10\n\x08nitrogen\x18\x02 \x01(\x02\x12\x12\n\nphosphorus\x18\x03 \x01(\x02\x12\x11\n\tpotassium\x18\x04 \x01(\x02\"\x8a\x01\n\x12\x46\x65rtilizerResponse\x12\x18\n\x10urea_kg_per_acre\x18\x01 \x01(\x02\x12\x17\n\x0f\x64\x61p_kg_per_acre\x18\x02 \x01(\x02\x12\x1a\n\x12potash_kg_per_acre\x18\x03 \x01(\x02\x12\x15\n\rtiming_advice\x18\x04 \x01(\t\x12\x0e\n\x06season\x18\x05 \x01(\t\"\x8f\x01\n\x11SoilTrendResponse\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x10\n\x08ph_slope\x18\x02 \x01(\x02\x12\x15\n\rph_last_value\x18\x03 \x01(\x02\x12\x10\n\x08oc_slope\x18\x04 \x01(\x02\x12\x15\n\roc_last_value\x18\x05 \x01(\x02\x12\x16\n\x0einterpretation\x18\x06 \x01(\t2\xd3\x01\n\tSoilAgent\x12;\n\rGetNPKProfile\x12\x16.paddy.DistrictRequest\x1a\x12.paddy.NPKResponse\x12G\n\x10GetFertilizerRec\x12\x18.paddy.FertilizerRequest\x1a\x19.paddy.FertilizerResponse\x12@\n\x0cGetSoilTrend\x12\x16.paddy.DistrictRequest\x1a\x18.paddy.SoilTrendResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12paddy_agents.proto\x12\x05paddy\"i\n\x11\x41gentRegistration\x12\x10\n\x08\x61gent_id\x18\x01 \x01(\t\x12\x12\n\nagent_name\x18\x02 \x01(\t\x12\x12\n\nagent_type\x18\x03 \x01(\t\x12\x0c\n\x04host\x18\x04 \x01(\t\x12\x0c\n\x04port\x18\x05 \x01(\x05\"3\n\x0fRegistrationAck\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x0f\n\rStatusRequest\"i\n\x14SystemStatusResponse\x12\x1b\n\x13orchestrator_status\x18\x01 \x01(\t\x12\x15\n\ractive_agents\x18\x02 \x03(\t\x12\x1d\n\x15total_queries_handled\x18\x03 \x01(\x05\"h\n\x0b\x46\x61rmerQuery\x12\x10\n\x08query_id\x18\x01 \x01(\t\x12\x12\n\nquery_type\x18\x02 \x01(\t\x12\x10\n\x08\x64istrict\x18\x03 \x01(\t\x12\x11\n\tfarmer_id\x18\x04 \x01(\t\x12\x0e\n\x06season\x18\x05 \x01(\t\"Z\n\x0b\x41gentResult\x12\x12\n\nagent_name\x18\x01 \x01(\t\x12\x13\n\x0bresult_json\x18\x02 \x01(\t\x12\x12\n\nconfidence\x18\x03 \x01(\x02\x12\x0e\n\x06status\x18\x04 \x01(\t\"\x9a\x01\n\x14OrchestratorResponse\x12\x10\n\x08query_id\x18\x01 \x01(\t\x12\x16\n\x0erecommendation\x18\x02 \x01(\t\x12)\n\ragent_results\x18\x03 \x03(\x0b\x32\x12.paddy.AgentResult\x12\x1a\n\x12overall_confidence\x18\x04 \x01(\x02\x12\x11\n\ttimestamp\x18\x05 \x01(\t\"\\\n\rAgentMetadata\x12\x10\n\x08\x61gent_id\x18\x01 \x01(\t\x12\x12\n\nagent_name\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\t\x12\x12\n\nconfidence\x18\x04 \x01(\x02\"G\n\x0eWeatherRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61te\x18\x02 \x01(\t\x12\x15\n\rforecast_days\x18\x03 \x01(\x05\"k\n\rDailyForecast\x12\x0c\n\x04\x64\x61te\x18\x01 \x01(\t\x12\x10\n\x08temp_max\x18\x02 \x01(\x02\x12\x10\n\x08temp_min\x18\x03 \x01(\x02\x12\x15\n\rrainfall_prob\x18\x04 \x01(\x02\x12\x11\n\tcondition\x18\x05 \x01(\t\"\xd3\x02\n\x0fWeatherResponse\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\x10\n\x08\x64istrict\x18\x02 \x01(\t\x12\x17\n\x0ftemperature_max\x18\x03 \x01(\x02\x12\x17\n\x0ftemperature_min\x18\x04 \x01(\x02\x12\x17\n\x0ftemperature_avg\x18\x05 \x01(\x02\x12\x13\n\x0brainfall_mm\x18\x06 \x01(\x02\x12\x18\n\x10humidity_percent\x18\x07 \x01(\x02\x12\x17\n\x0fwind_speed_kmph\x18\x08 \x01(\x02\x12\x16\n\x0esunshine_hours\x18\t \x01(\x02\x12\x19\n\x11weather_condition\x18\n \x01(\t\x12\x18\n\x10\x66\x61rming_advisory\x18\x0b \x01(\t\x12&\n\x08\x66orecast\x18\x0c \x03(\x0b\x32\x14.paddy.DailyForecast\"\xa1\x01\n\x14WeatherAlertResponse\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\x11\n\thas_alert\x18\x02 \x01(\x08\x12\x12\n\nalert_type\x18\x03 \x01(\t\x12\x10\n\x08severity\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x17\n\x0f\x61\x63tion_required\x18\x06 \x01(\t\"N\n\x14HistoricalWeatherReq\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x12\n\nstart_date\x18\x02 \x01(\t\x12\x10\n\x08\x65nd_date\x18\x03 \x01(\t\"\x92\x01\n\x15HistoricalWeatherResp\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\'\n\x07records\x18\x02 \x03(\x0b\x32\x16.paddy.WeatherResponse\x12\x10\n\x08\x61vg_temp\x18\x03 \x01(\x02\x12\x16\n\x0etotal_rainfall\x18\x04 \x01(\x02\"/\n\x0bSoilRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x0e\n\x06season\x18\x02 \x01(\t\"\x94\x03\n\x0cSoilResponse\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\x10\n\x08\x64istrict\x18\x02 \x01(\t\x12\x10\n\x08nitrogen\x18\x03 \x01(\x02\x12\x12\n\nphosphorus\x18\x04 \x01(\x02\x12\x11\n\tpotassium\x18\x05 \x01(\x02\x12\n\n\x02ph\x18\x06 \x01(\x02\x12\x16\n\x0eorganic_carbon\x18\x07 \x01(\x02\x12\x16\n\x0eurea_kg_per_ha\x18\x08 \x01(\x02\x12\x15\n\rdap_kg_per_ha\x18\t \x01(\x02\x12\x18\n\x10potash_kg_per_ha\x18\n \x01(\x02\x12\x15\n\rtiming_advice\x18\x0b \x01(\t\x12!\n\x19predicted_yield_kg_per_ha\x18\x0c \x01(\x02\x12\x1c\n\x14yield_interpretation\x18\r \x01(\t\x12\x16\n\x0eph_trend_slope\x18\x0e \x01(\x02\x12\x16\n\x0eoc_trend_slope\x18\x0f \x01(\x02\x12\x1c\n\x14trend_interpretation\x18\x10 \x01(\t\"C\n\x11\x43ropHealthRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x0e\n\x06season\x18\x02 \x01(\t\x12\x0c\n\x04year\x18\x03 \x01(\x05\"\xa5\x01\n\x12\x43ropHealthResponse\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\x10\n\x08\x64istrict\x18\x02 \x01(\t\x12\x14\n\x0cstress_class\x18\x03 \x01(\t\x12\x16\n\x0endvi_deviation\x18\x04 \x01(\x02\x12\x14\n\x0cgrowth_stage\x18\x05 \x01(\t\x12\x11\n\ttreatment\x18\x06 \x01(\t\"/\n\rMarketRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x0c\n\x04\x63rop\x18\x02 \x01(\t\"\xef\x01\n\x0eMarketResponse\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\x0f\n\x07variety\x18\x02 \x01(\t\x12\x15\n\rcurrent_price\x18\x03 \x01(\x02\x12\x11\n\tavg_30day\x18\x04 \x01(\x02\x12\x11\n\tavg_90day\x18\x05 \x01(\x02\x12\x13\n\x0bprice_trend\x18\x06 \x01(\t\x12\x15\n\rmarket_demand\x18\x07 \x01(\t\x12\x15\n\rsupply_status\x18\x08 \x01(\t\x12\x12\n\nbest_month\x18\t \x01(\t\x12\x10\n\x08\x61\x64visory\x18\n \x01(\t\"\x82\x01\n\x0fPestRiskRequest\x12\x10\n\x08\x64istrict\x18\x01 \x01(\t\x12\x0e\n\x06season\x18\x02 \x01(\t\x12\x14\n\x0cgrowth_stage\x18\x03 \x01(\t\x12\x13\n\x0btemperature\x18\x04 \x01(\x02\x12\x10\n\x08humidity\x18\x05 \x01(\x02\x12\x10\n\x08rainfall\x18\x06 \x01(\x02\"b\n\x08PestInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\nrisk_level\x18\x02 \x01(\t\x12\r\n\x05signs\x18\x03 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x04 \x01(\t\x12\x15\n\retl_threshold\x18\x05 \x01(\t\"\x94\x01\n\x10PestRiskResponse\x12&\n\x08metadata\x18\x01 \x01(\x0b\x32\x14.paddy.AgentMetadata\x12\x10\n\x08\x64istrict\x18\x02 \x01(\t\x12\x14\n\x0coverall_risk\x18\x03 \x01(\t\x12\x1e\n\x05pests\x18\x04 \x03(\x0b\x32\x0f.paddy.PestInfo\x12\x10\n\x08\x61\x64visory\x18\x05 \x01(\t2\xdd\x01\n\x13OrchestratorService\x12\x41\n\rRegisterAgent\x12\x18.paddy.AgentRegistration\x1a\x16.paddy.RegistrationAck\x12\x44\n\x0fGetSystemStatus\x12\x14.paddy.StatusRequest\x1a\x1b.paddy.SystemStatusResponse\x12=\n\nRouteQuery\x12\x12.paddy.FarmerQuery\x1a\x1b.paddy.OrchestratorResponse2\xf4\x01\n\x13WeatherAgentService\x12\x43\n\x12GetWeatherForecast\x12\x15.paddy.WeatherRequest\x1a\x16.paddy.WeatherResponse\x12\x45\n\x0fGetWeatherAlert\x12\x15.paddy.WeatherRequest\x1a\x1b.paddy.WeatherAlertResponse\x12Q\n\x14GetHistoricalWeather\x12\x1b.paddy.HistoricalWeatherReq\x1a\x1c.paddy.HistoricalWeatherResp2L\n\x10SoilAgentService\x12\x38\n\rGetSoilHealth\x12\x12.paddy.SoilRequest\x1a\x13.paddy.SoilResponse2d\n\x16\x43ropHealthAgentService\x12J\n\x13GetCropHealthStatus\x12\x18.paddy.CropHealthRequest\x1a\x19.paddy.CropHealthResponse2V\n\x12MarketAgentService\x12@\n\x11GetMarketAdvisory\x12\x14.paddy.MarketRequest\x1a\x15.paddy.MarketResponse2V\n\x14PestRiskAgentService\x12>\n\x0bGetPestRisk\x12\x16.paddy.PestRiskRequest\x1a\x17.paddy.PestRiskResponseB#Z!github.com/AdiXgit/Capstone/protob\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'paddy_agents_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
-  _globals['_DISTRICTREQUEST']._serialized_start=29
-  _globals['_DISTRICTREQUEST']._serialized_end=64
-  _globals['_FERTILIZERREQUEST']._serialized_start=67
-  _globals['_FERTILIZERREQUEST']._serialized_end=213
-  _globals['_NPKRESPONSE']._serialized_start=215
-  _globals['_NPKRESPONSE']._serialized_end=303
-  _globals['_FERTILIZERRESPONSE']._serialized_start=306
-  _globals['_FERTILIZERRESPONSE']._serialized_end=444
-  _globals['_SOILTRENDRESPONSE']._serialized_start=447
-  _globals['_SOILTRENDRESPONSE']._serialized_end=590
-  _globals['_SOILAGENT']._serialized_start=593
-  _globals['_SOILAGENT']._serialized_end=804
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'Z!github.com/AdiXgit/Capstone/proto'
+  _globals['_AGENTREGISTRATION']._serialized_start=29
+  _globals['_AGENTREGISTRATION']._serialized_end=134
+  _globals['_REGISTRATIONACK']._serialized_start=136
+  _globals['_REGISTRATIONACK']._serialized_end=187
+  _globals['_STATUSREQUEST']._serialized_start=189
+  _globals['_STATUSREQUEST']._serialized_end=204
+  _globals['_SYSTEMSTATUSRESPONSE']._serialized_start=206
+  _globals['_SYSTEMSTATUSRESPONSE']._serialized_end=311
+  _globals['_FARMERQUERY']._serialized_start=313
+  _globals['_FARMERQUERY']._serialized_end=417
+  _globals['_AGENTRESULT']._serialized_start=419
+  _globals['_AGENTRESULT']._serialized_end=509
+  _globals['_ORCHESTRATORRESPONSE']._serialized_start=512
+  _globals['_ORCHESTRATORRESPONSE']._serialized_end=666
+  _globals['_AGENTMETADATA']._serialized_start=668
+  _globals['_AGENTMETADATA']._serialized_end=760
+  _globals['_WEATHERREQUEST']._serialized_start=762
+  _globals['_WEATHERREQUEST']._serialized_end=833
+  _globals['_DAILYFORECAST']._serialized_start=835
+  _globals['_DAILYFORECAST']._serialized_end=942
+  _globals['_WEATHERRESPONSE']._serialized_start=945
+  _globals['_WEATHERRESPONSE']._serialized_end=1284
+  _globals['_WEATHERALERTRESPONSE']._serialized_start=1287
+  _globals['_WEATHERALERTRESPONSE']._serialized_end=1448
+  _globals['_HISTORICALWEATHERREQ']._serialized_start=1450
+  _globals['_HISTORICALWEATHERREQ']._serialized_end=1528
+  _globals['_HISTORICALWEATHERRESP']._serialized_start=1531
+  _globals['_HISTORICALWEATHERRESP']._serialized_end=1677
+  _globals['_SOILREQUEST']._serialized_start=1679
+  _globals['_SOILREQUEST']._serialized_end=1726
+  _globals['_SOILRESPONSE']._serialized_start=1729
+  _globals['_SOILRESPONSE']._serialized_end=2133
+  _globals['_CROPHEALTHREQUEST']._serialized_start=2135
+  _globals['_CROPHEALTHREQUEST']._serialized_end=2202
+  _globals['_CROPHEALTHRESPONSE']._serialized_start=2205
+  _globals['_CROPHEALTHRESPONSE']._serialized_end=2370
+  _globals['_MARKETREQUEST']._serialized_start=2372
+  _globals['_MARKETREQUEST']._serialized_end=2419
+  _globals['_MARKETRESPONSE']._serialized_start=2422
+  _globals['_MARKETRESPONSE']._serialized_end=2661
+  _globals['_PESTRISKREQUEST']._serialized_start=2664
+  _globals['_PESTRISKREQUEST']._serialized_end=2794
+  _globals['_PESTINFO']._serialized_start=2796
+  _globals['_PESTINFO']._serialized_end=2894
+  _globals['_PESTRISKRESPONSE']._serialized_start=2897
+  _globals['_PESTRISKRESPONSE']._serialized_end=3045
+  _globals['_ORCHESTRATORSERVICE']._serialized_start=3048
+  _globals['_ORCHESTRATORSERVICE']._serialized_end=3269
+  _globals['_WEATHERAGENTSERVICE']._serialized_start=3272
+  _globals['_WEATHERAGENTSERVICE']._serialized_end=3516
+  _globals['_SOILAGENTSERVICE']._serialized_start=3518
+  _globals['_SOILAGENTSERVICE']._serialized_end=3594
+  _globals['_CROPHEALTHAGENTSERVICE']._serialized_start=3596
+  _globals['_CROPHEALTHAGENTSERVICE']._serialized_end=3696
+  _globals['_MARKETAGENTSERVICE']._serialized_start=3698
+  _globals['_MARKETAGENTSERVICE']._serialized_end=3784
+  _globals['_PESTRISKAGENTSERVICE']._serialized_start=3786
+  _globals['_PESTRISKAGENTSERVICE']._serialized_end=3872
 # @@protoc_insertion_point(module_scope)
