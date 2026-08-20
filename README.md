@@ -350,3 +350,18 @@ paddy-multiagent-phase1/
 │   └── gen_proto.sh                # Proto code generation
 └── README.md
 ```
+
+## Soil Agent (Aman) — Port 50052
+- NPK profiling: district-wise soil fertility from 928 records
+- Fertilizer advisory: Karnataka KVK rule-based guidelines
+- Yield prediction: Random Forest, R²=0.87, MAE≈231 kg/ha
+- Soil trend: 15-year pH and organic carbon regression
+- Tests: 5/5 passing (`pytest test_soil_agent.py -v`)
+
+## Market Price Agent (Aman) — Port 50055
+- Variety-based price advisory for 5 paddy varieties
+- 30/90-day rolling averages, trend detection via linear regression
+- Sell/hold advisory combining price momentum + demand/supply signals
+- Tests: 2/2 passing (`pytest test_market_agent.py -v`)
+
+
