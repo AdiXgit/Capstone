@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-cream text-ink font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-serif;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl2 bg-white shadow-card;
+  }
+  .label-cap {
+    @apply text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .field {
+    @apply w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none transition focus:border-forest-400/70;
+  }
+}
+
+/* native select dropdown list stays readable on dark sidebar */
+select.field option {
+  color: #1a1a1a;
+  background: #ffffff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(45, 106, 79, 0.28);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(116, 198, 157, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(116, 198, 157, 0);
+  }
+}
+.live-dot {
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  @apply relative overflow-hidden bg-forest-100/70;
+}
+.skeleton::after {
+  content: "";
+  @apply absolute inset-0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.4s infinite;
+}
