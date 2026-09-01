@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY python/shared/ python/shared/
+COPY python/agents/crop_health_agent/ python/agents/crop_health_agent/
+COPY gateway/ gateway/
+
+ENV GATEWAY_PORT=8000
+ENV AGENT_HOST=host.docker.internal
+EXPOSE 8000
+
+CMD ["python3", "gateway/main.py"]

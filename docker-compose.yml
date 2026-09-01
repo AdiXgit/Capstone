@@ -1,0 +1,86 @@
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.orchestrator
+    ports:
+      - "50051:50051"
+    environment:
+      - ORCHESTRATOR_PORT=50051
+
+  soil-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.soil
+    ports:
+      - "50052:50052"
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      - orchestrator
+
+  weather-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.weather
+    ports:
+      - "50053:50053"
+    environment:
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+    depends_on:
+      - orchestrator
+
+  crop-health-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.crop_health
+    ports:
+      - "50054:50054"
+    environment:
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      - orchestrator
+
+  # market-price-agent:      # TODO(Aman): add once market_agent.py (port 50055) exists
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.market
+  #   ports:
+  #     - "50055:50055"
+  #   depends_on:
+  #     - orchestrator
+
+  # pest-risk-agent:         # TODO(Aditya): add once pest_agent.py (port 50056) exists
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.pest
+  #   ports:
+  #     - "50056:50056"
+  #   depends_on:
+  #     - orchestrator
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - AGENT_HOST=host.docker.internal
+    volumes:
+      - ./data:/data:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - crop-health-agent
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "8501:80"
+    depends_on:
+      - gateway

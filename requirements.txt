@@ -1,0 +1,16 @@
+# Agents + ML
+grpcio
+grpcio-tools
+pandas
+numpy
+scikit-learn
+requests
+openpyxl
+joblib
+
+# REST gateway (bridges the browser to the gRPC agent mesh)
+fastapi
+uvicorn[standard]
+
+# Tests
+pytest

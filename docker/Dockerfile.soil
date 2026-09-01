@@ -1,0 +1,14 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY python/shared/ python/shared/
+COPY python/agents/soil_agent/ python/agents/soil_agent/
+
+WORKDIR /app/python/agents/soil_agent
+EXPOSE 50052
+
+CMD ["python3", "soil_agent.py"]

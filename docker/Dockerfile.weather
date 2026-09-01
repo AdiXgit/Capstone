@@ -1,0 +1,13 @@
+# NOTE: builds only once go/go.mod and the generated Go proto stubs exist
+# (github.com/AdiXgit/Capstone/proto) — tracked as a separate Go-stubs task.
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go/ go/
+WORKDIR /src/go
+RUN go build -o /out/weather-agent ./agents/weather
+
+FROM alpine:3.19
+COPY --from=build /out/weather-agent /usr/local/bin/weather-agent
+ENV WEATHER_AGENT_PORT=50053
+EXPOSE 50053
+CMD ["weather-agent"]

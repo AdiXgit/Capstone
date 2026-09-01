@@ -227,20 +227,49 @@ message SoilHealthResponse {
 // ═══════════════════════════════════════════════════════════════
 
 service CropHealthAgentService {
-  rpc GetCropHealthStatus (CropHealthRequest)  returns (CropHealthResponse);
+  rpc GetCropHealthStatus        (CropHealthRequest)       returns (CropHealthResponse);
+  rpc GetTreatmentRecommendation (TreatmentRequest)         returns (TreatmentResponse);
 }
 
 message CropHealthRequest {
-  string district = 1;
-  string season   = 2;
-  int32  year     = 3;
+  string district              = 1;
+  string season                = 2;
+  int32  year                  = 3;
+  int32  days_after_sowing     = 4; // optional — 0 means "derive from season/today"
 }
 
 message CropHealthResponse {
   AgentMetadata metadata    = 1;
   string district           = 2;
-  string crop_status        = 3; // "HEALTHY" | "STRESSED" | "DISEASED" | "UNKNOWN"
+  string crop_status        = 3; // "HEALTHY" | "STRESSED" | "DISEASED" | "UNKNOWN" (derived from stress_level)
   string disease_risk       = 4; // "LOW" | "MEDIUM" | "HIGH"
   string recommendation     = 5;
   float  confidence         = 6;
+
+  // Fields below back the NDVI-based stress classifier and treatment mapping.
+  string growth_stage       = 7;  // one of the 7 dataset growth stages
+  int32  days_after_sowing  = 8;
+  float  ndvi                = 9;
+  float  ndvi_deviation      = 10; // ndvi - stage's expected median NDVI
+  string stress_level        = 11; // "Healthy" | "Mild" | "Moderate" | "Severe"
+  string treatment            = 12; // KVK treatment recommendation for (stress_level, growth_stage)
+  string ndvi_source          = 13; // "DATASET" | "NASA_POWER" | "OPEN_METEO" | "FALLBACK"
+}
+
+// GetTreatmentRecommendation looks up the KVK treatment for a (stress_level, growth_stage)
+// pair directly. If stress_level is left blank, it is derived the same way
+// GetCropHealthStatus derives it (dataset/fallback NDVI -> classifier).
+message TreatmentRequest {
+  string district     = 1;
+  string season        = 2;
+  string growth_stage  = 3; // optional — derived from days_after_sowing/season if blank
+  string stress_level  = 4; // optional — "Healthy" | "Mild" | "Moderate" | "Severe"; derived if blank
+  int32  days_after_sowing = 5;
+}
+
+message TreatmentResponse {
+  AgentMetadata metadata   = 1;
+  string growth_stage      = 2;
+  string stress_level      = 3;
+  string treatment         = 4;
 }

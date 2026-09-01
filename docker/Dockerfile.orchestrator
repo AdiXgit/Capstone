@@ -1,0 +1,13 @@
+# NOTE: builds only once go/go.mod and the generated Go proto stubs exist
+# (github.com/AdiXgit/Capstone/proto) — tracked as a separate Go-stubs task.
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go/ go/
+WORKDIR /src/go
+RUN go build -o /out/orchestrator ./orchestrator
+
+FROM alpine:3.19
+COPY --from=build /out/orchestrator /usr/local/bin/orchestrator
+ENV ORCHESTRATOR_PORT=50051
+EXPOSE 50051
+CMD ["orchestrator"]

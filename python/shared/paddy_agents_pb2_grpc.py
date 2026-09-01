@@ -25,8 +25,356 @@ if _version_not_supported:
     )
 
 
-class SoilAgentStub(object):
-    """── Soil Agent ──────────────────────────────────────────
+class OrchestratorServiceStub(object):
+    """═══════════════════════════════════════════════════════════════
+    ORCHESTRATOR SERVICE
+    Central router — the dashboard / API gateway calls this.
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.RegisterAgent = channel.unary_unary(
+                '/paddy.OrchestratorService/RegisterAgent',
+                request_serializer=paddy__agents__pb2.AgentRegistration.SerializeToString,
+                response_deserializer=paddy__agents__pb2.RegistrationAck.FromString,
+                _registered_method=True)
+        self.RouteQuery = channel.unary_unary(
+                '/paddy.OrchestratorService/RouteQuery',
+                request_serializer=paddy__agents__pb2.FarmerQuery.SerializeToString,
+                response_deserializer=paddy__agents__pb2.OrchestratorResponse.FromString,
+                _registered_method=True)
+        self.GetSystemStatus = channel.unary_unary(
+                '/paddy.OrchestratorService/GetSystemStatus',
+                request_serializer=paddy__agents__pb2.StatusRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.SystemStatusResponse.FromString,
+                _registered_method=True)
+
+
+class OrchestratorServiceServicer(object):
+    """═══════════════════════════════════════════════════════════════
+    ORCHESTRATOR SERVICE
+    Central router — the dashboard / API gateway calls this.
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    def RegisterAgent(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RouteQuery(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSystemStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_OrchestratorServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'RegisterAgent': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterAgent,
+                    request_deserializer=paddy__agents__pb2.AgentRegistration.FromString,
+                    response_serializer=paddy__agents__pb2.RegistrationAck.SerializeToString,
+            ),
+            'RouteQuery': grpc.unary_unary_rpc_method_handler(
+                    servicer.RouteQuery,
+                    request_deserializer=paddy__agents__pb2.FarmerQuery.FromString,
+                    response_serializer=paddy__agents__pb2.OrchestratorResponse.SerializeToString,
+            ),
+            'GetSystemStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSystemStatus,
+                    request_deserializer=paddy__agents__pb2.StatusRequest.FromString,
+                    response_serializer=paddy__agents__pb2.SystemStatusResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'paddy.OrchestratorService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('paddy.OrchestratorService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class OrchestratorService(object):
+    """═══════════════════════════════════════════════════════════════
+    ORCHESTRATOR SERVICE
+    Central router — the dashboard / API gateway calls this.
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    @staticmethod
+    def RegisterAgent(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.OrchestratorService/RegisterAgent',
+            paddy__agents__pb2.AgentRegistration.SerializeToString,
+            paddy__agents__pb2.RegistrationAck.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RouteQuery(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.OrchestratorService/RouteQuery',
+            paddy__agents__pb2.FarmerQuery.SerializeToString,
+            paddy__agents__pb2.OrchestratorResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSystemStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.OrchestratorService/GetSystemStatus',
+            paddy__agents__pb2.StatusRequest.SerializeToString,
+            paddy__agents__pb2.SystemStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class WeatherAgentServiceStub(object):
+    """═══════════════════════════════════════════════════════════════
+    WEATHER AGENT SERVICE
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetWeatherForecast = channel.unary_unary(
+                '/paddy.WeatherAgentService/GetWeatherForecast',
+                request_serializer=paddy__agents__pb2.WeatherRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.WeatherResponse.FromString,
+                _registered_method=True)
+        self.GetWeatherAlert = channel.unary_unary(
+                '/paddy.WeatherAgentService/GetWeatherAlert',
+                request_serializer=paddy__agents__pb2.WeatherRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.WeatherAlertResponse.FromString,
+                _registered_method=True)
+        self.GetHistoricalWeather = channel.unary_unary(
+                '/paddy.WeatherAgentService/GetHistoricalWeather',
+                request_serializer=paddy__agents__pb2.HistoricalWeatherReq.SerializeToString,
+                response_deserializer=paddy__agents__pb2.HistoricalWeatherResp.FromString,
+                _registered_method=True)
+
+
+class WeatherAgentServiceServicer(object):
+    """═══════════════════════════════════════════════════════════════
+    WEATHER AGENT SERVICE
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    def GetWeatherForecast(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWeatherAlert(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetHistoricalWeather(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_WeatherAgentServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetWeatherForecast': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWeatherForecast,
+                    request_deserializer=paddy__agents__pb2.WeatherRequest.FromString,
+                    response_serializer=paddy__agents__pb2.WeatherResponse.SerializeToString,
+            ),
+            'GetWeatherAlert': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWeatherAlert,
+                    request_deserializer=paddy__agents__pb2.WeatherRequest.FromString,
+                    response_serializer=paddy__agents__pb2.WeatherAlertResponse.SerializeToString,
+            ),
+            'GetHistoricalWeather': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetHistoricalWeather,
+                    request_deserializer=paddy__agents__pb2.HistoricalWeatherReq.FromString,
+                    response_serializer=paddy__agents__pb2.HistoricalWeatherResp.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'paddy.WeatherAgentService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('paddy.WeatherAgentService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class WeatherAgentService(object):
+    """═══════════════════════════════════════════════════════════════
+    WEATHER AGENT SERVICE
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    @staticmethod
+    def GetWeatherForecast(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.WeatherAgentService/GetWeatherForecast',
+            paddy__agents__pb2.WeatherRequest.SerializeToString,
+            paddy__agents__pb2.WeatherResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetWeatherAlert(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.WeatherAgentService/GetWeatherAlert',
+            paddy__agents__pb2.WeatherRequest.SerializeToString,
+            paddy__agents__pb2.WeatherAlertResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetHistoricalWeather(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.WeatherAgentService/GetHistoricalWeather',
+            paddy__agents__pb2.HistoricalWeatherReq.SerializeToString,
+            paddy__agents__pb2.HistoricalWeatherResp.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class SoilAgentServiceStub(object):
+    """═══════════════════════════════════════════════════════════════
+    SOIL AGENT SERVICE
+    (your existing messages, unchanged — only added AgentMetadata
+    to responses so the orchestrator can log agent provenance)
+    ═══════════════════════════════════════════════════════════════
+
     """
 
     def __init__(self, channel):
@@ -36,24 +384,34 @@ class SoilAgentStub(object):
             channel: A grpc.Channel.
         """
         self.GetNPKProfile = channel.unary_unary(
-                '/paddy.SoilAgent/GetNPKProfile',
+                '/paddy.SoilAgentService/GetNPKProfile',
                 request_serializer=paddy__agents__pb2.DistrictRequest.SerializeToString,
                 response_deserializer=paddy__agents__pb2.NPKResponse.FromString,
                 _registered_method=True)
         self.GetFertilizerRec = channel.unary_unary(
-                '/paddy.SoilAgent/GetFertilizerRec',
+                '/paddy.SoilAgentService/GetFertilizerRec',
                 request_serializer=paddy__agents__pb2.FertilizerRequest.SerializeToString,
                 response_deserializer=paddy__agents__pb2.FertilizerResponse.FromString,
                 _registered_method=True)
         self.GetSoilTrend = channel.unary_unary(
-                '/paddy.SoilAgent/GetSoilTrend',
+                '/paddy.SoilAgentService/GetSoilTrend',
                 request_serializer=paddy__agents__pb2.DistrictRequest.SerializeToString,
                 response_deserializer=paddy__agents__pb2.SoilTrendResponse.FromString,
                 _registered_method=True)
+        self.GetSoilHealth = channel.unary_unary(
+                '/paddy.SoilAgentService/GetSoilHealth',
+                request_serializer=paddy__agents__pb2.SoilRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.SoilHealthResponse.FromString,
+                _registered_method=True)
 
 
-class SoilAgentServicer(object):
-    """── Soil Agent ──────────────────────────────────────────
+class SoilAgentServiceServicer(object):
+    """═══════════════════════════════════════════════════════════════
+    SOIL AGENT SERVICE
+    (your existing messages, unchanged — only added AgentMetadata
+    to responses so the orchestrator can log agent provenance)
+    ═══════════════════════════════════════════════════════════════
+
     """
 
     def GetNPKProfile(self, request, context):
@@ -74,8 +432,14 @@ class SoilAgentServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetSoilHealth(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-def add_SoilAgentServicer_to_server(servicer, server):
+
+def add_SoilAgentServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetNPKProfile': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNPKProfile,
@@ -92,16 +456,26 @@ def add_SoilAgentServicer_to_server(servicer, server):
                     request_deserializer=paddy__agents__pb2.DistrictRequest.FromString,
                     response_serializer=paddy__agents__pb2.SoilTrendResponse.SerializeToString,
             ),
+            'GetSoilHealth': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSoilHealth,
+                    request_deserializer=paddy__agents__pb2.SoilRequest.FromString,
+                    response_serializer=paddy__agents__pb2.SoilHealthResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'paddy.SoilAgent', rpc_method_handlers)
+            'paddy.SoilAgentService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('paddy.SoilAgent', rpc_method_handlers)
+    server.add_registered_method_handlers('paddy.SoilAgentService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class SoilAgent(object):
-    """── Soil Agent ──────────────────────────────────────────
+class SoilAgentService(object):
+    """═══════════════════════════════════════════════════════════════
+    SOIL AGENT SERVICE
+    (your existing messages, unchanged — only added AgentMetadata
+    to responses so the orchestrator can log agent provenance)
+    ═══════════════════════════════════════════════════════════════
+
     """
 
     @staticmethod
@@ -118,7 +492,7 @@ class SoilAgent(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/paddy.SoilAgent/GetNPKProfile',
+            '/paddy.SoilAgentService/GetNPKProfile',
             paddy__agents__pb2.DistrictRequest.SerializeToString,
             paddy__agents__pb2.NPKResponse.FromString,
             options,
@@ -145,7 +519,7 @@ class SoilAgent(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/paddy.SoilAgent/GetFertilizerRec',
+            '/paddy.SoilAgentService/GetFertilizerRec',
             paddy__agents__pb2.FertilizerRequest.SerializeToString,
             paddy__agents__pb2.FertilizerResponse.FromString,
             options,
@@ -172,9 +546,163 @@ class SoilAgent(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/paddy.SoilAgent/GetSoilTrend',
+            '/paddy.SoilAgentService/GetSoilTrend',
             paddy__agents__pb2.DistrictRequest.SerializeToString,
             paddy__agents__pb2.SoilTrendResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSoilHealth(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.SoilAgentService/GetSoilHealth',
+            paddy__agents__pb2.SoilRequest.SerializeToString,
+            paddy__agents__pb2.SoilHealthResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class CropHealthAgentServiceStub(object):
+    """═══════════════════════════════════════════════════════════════
+    CROP HEALTH AGENT SERVICE
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetCropHealthStatus = channel.unary_unary(
+                '/paddy.CropHealthAgentService/GetCropHealthStatus',
+                request_serializer=paddy__agents__pb2.CropHealthRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.CropHealthResponse.FromString,
+                _registered_method=True)
+        self.GetTreatmentRecommendation = channel.unary_unary(
+                '/paddy.CropHealthAgentService/GetTreatmentRecommendation',
+                request_serializer=paddy__agents__pb2.TreatmentRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.TreatmentResponse.FromString,
+                _registered_method=True)
+
+
+class CropHealthAgentServiceServicer(object):
+    """═══════════════════════════════════════════════════════════════
+    CROP HEALTH AGENT SERVICE
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    def GetCropHealthStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetTreatmentRecommendation(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_CropHealthAgentServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetCropHealthStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetCropHealthStatus,
+                    request_deserializer=paddy__agents__pb2.CropHealthRequest.FromString,
+                    response_serializer=paddy__agents__pb2.CropHealthResponse.SerializeToString,
+            ),
+            'GetTreatmentRecommendation': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTreatmentRecommendation,
+                    request_deserializer=paddy__agents__pb2.TreatmentRequest.FromString,
+                    response_serializer=paddy__agents__pb2.TreatmentResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'paddy.CropHealthAgentService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('paddy.CropHealthAgentService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class CropHealthAgentService(object):
+    """═══════════════════════════════════════════════════════════════
+    CROP HEALTH AGENT SERVICE
+    ═══════════════════════════════════════════════════════════════
+
+    """
+
+    @staticmethod
+    def GetCropHealthStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.CropHealthAgentService/GetCropHealthStatus',
+            paddy__agents__pb2.CropHealthRequest.SerializeToString,
+            paddy__agents__pb2.CropHealthResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetTreatmentRecommendation(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.CropHealthAgentService/GetTreatmentRecommendation',
+            paddy__agents__pb2.TreatmentRequest.SerializeToString,
+            paddy__agents__pb2.TreatmentResponse.FromString,
             options,
             channel_credentials,
             insecure,

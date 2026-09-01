@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY python/shared/ python/shared/
+COPY python/agents/crop_health_agent/ python/agents/crop_health_agent/
+
+ENV AI_ML_XLSX_PATH=/data/Karnataka_Paddy_AI_ML_Dataset.xlsx
+ENV MAIN_CSV_PATH=/data/Karnataka_Paddy_Main_Dataset.csv
+ENV CROP_HEALTH_AGENT_PORT=50054
+ENV ORCHESTRATOR_ADDR=orchestrator:50051
+
+WORKDIR /app/python/agents/crop_health_agent
+EXPOSE 50054
+
+CMD ["python3", "crop_health_agent.py"]

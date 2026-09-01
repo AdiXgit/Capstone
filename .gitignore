@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / frontend (frontend/ has its own too, but belt and suspenders)
+node_modules/
+dist/
+.vite/
+
+# Runtime
+.logs/
+*.log
+
+# OS
+.DS_Store
