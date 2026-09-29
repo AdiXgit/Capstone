@@ -1,4 +1,8 @@
-"""Standalone training script: trains and persists the crop-health stress classifier.
+"""Persist the crop-health stress rule report.
+
+Revision: the stress level is a deterministic NDVI-vs-benchmark rule, not a learned
+model (see data_store.py for the leakage analysis), so there is no pickled model to
+train. This script just writes the honest rule report for provenance.
 
 Usage:
     cd python/agents/crop_health_agent
@@ -6,9 +10,8 @@ Usage:
 """
 import os
 import sys
+import json
 import logging
-
-import joblib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from data_store import CropHealthDataStore
@@ -25,18 +28,12 @@ MODELS_DIR = os.path.join(BASE, "models")
 def main():
     os.makedirs(MODELS_DIR, exist_ok=True)
     store = CropHealthDataStore(XLSX_PATH, CSV_PATH)
-
-    model_path = os.path.join(MODELS_DIR, "stress_classifier.pkl")
-    joblib.dump(store._clf, model_path)
-    log.info("Saved stress classifier -> %s", model_path)
-
-    acc = store.train_test_accuracy
-    cm_path = os.path.join(MODELS_DIR, "confusion_matrix.csv")
-    acc["confusion_matrix"].to_csv(cm_path)
-    log.info("Saved confusion matrix -> %s", cm_path)
-
-    log.info("Final: train_accuracy=%.3f  test_accuracy=%.3f (80/20 stratified split)",
-              acc["train_accuracy"], acc["test_accuracy"])
+    out = os.path.join(MODELS_DIR, "stress_rule.json")
+    with open(out, "w") as f:
+        json.dump(store.stress_model, f, indent=2)
+    log.info("Saved stress rule report -> %s", out)
+    log.info("Method: %s | distribution: %s",
+             store.stress_model["method"], store.stress_model["label_distribution"])
 
 
 if __name__ == "__main__":

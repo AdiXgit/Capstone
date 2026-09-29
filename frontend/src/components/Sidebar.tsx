@@ -8,6 +8,8 @@ import {
   IndianRupee,
   Bug,
   Activity,
+  Network,
+  Gauge,
   ChevronDown,
 } from "lucide-react";
 import { useAppState } from "../state/AppState";
@@ -15,15 +17,23 @@ import { api } from "../lib/api";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
+  { to: "/orchestrator", label: "Orchestrator", icon: Network },
   { to: "/soil", label: "Soil Intelligence", icon: Sprout },
   { to: "/weather", label: "Weather Advisory", icon: CloudSun },
   { to: "/crop-health", label: "Crop Health", icon: Leaf },
+  { to: "/model", label: "Model Performance", icon: Gauge },
   { to: "/market", label: "Market Prices", icon: IndianRupee },
   { to: "/pest-risk", label: "Pest Risk", icon: Bug },
   { to: "/system", label: "System Status", icon: Activity },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  open = false,
+  onNavigate,
+}: {
+  open?: boolean;
+  onNavigate?: () => void;
+}) {
   const { district, season, stage, setDistrict, setSeason, setStage, meta } = useAppState();
 
   const { data: status } = useQuery({
@@ -36,7 +46,11 @@ export default function Sidebar() {
   const stages = meta?.growth_stages ?? [stage];
 
   return (
-    <aside className="flex h-screen w-[278px] shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-forest-950 to-forest-900 px-5 py-6">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen w-[278px] shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-forest-950 to-forest-900 px-5 py-6 transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Brand */}
       <div className="mb-7 flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-forest-700/70 ring-1 ring-forest-400/30">
@@ -57,6 +71,7 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={end}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-full px-4 py-2.5 text-[14px] transition ${
                 isActive

@@ -1,0 +1,74 @@
+{
+  "trained": true,
+  "model": "paddy_disease_cls.pt",
+  "top1_accuracy": 0.9287,
+  "target_accuracy": 0.75,
+  "meets_target": true,
+  "num_classes": 4,
+  "class_names": [
+    "Brown Spot",
+    "Healthy",
+    "Leaf Blast",
+    "Neck Blast"
+  ],
+  "val_images": 814,
+  "train_images": 3264,
+  "per_class": [
+    {
+      "class": "Brown Spot",
+      "precision": 0.9167,
+      "recall": 0.8115,
+      "f1": 0.8609,
+      "support": 122
+    },
+    {
+      "class": "Healthy",
+      "precision": 0.9097,
+      "recall": 0.9832,
+      "f1": 0.945,
+      "support": 297
+    },
+    {
+      "class": "Leaf Blast",
+      "precision": 0.8919,
+      "recall": 0.8462,
+      "f1": 0.8684,
+      "support": 195
+    },
+    {
+      "class": "Neck Blast",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 200
+    }
+  ],
+  "confusion_matrix": [
+    [
+      99,
+      8,
+      15,
+      0
+    ],
+    [
+      0,
+      292,
+      5,
+      0
+    ],
+    [
+      9,
+      21,
+      165,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      200
+    ]
+  ],
+  "eval_seconds": 14.7,
+  "evaluated_at": "2026-09-28T14:58:30Z"
+}

@@ -15,6 +15,7 @@ import { Leaf, RotateCcw } from "lucide-react";
 import { api } from "../lib/api";
 import { useAppState } from "../state/AppState";
 import { Badge, Card, CardSkeleton, ErrorState, InfoBox, SectionTitle, Skeleton, SourceTag } from "../components/ui";
+import DiseaseDetect from "../components/DiseaseDetect";
 
 const AXIS = { stroke: "#6B7280", fontSize: 12 };
 
@@ -178,6 +179,9 @@ export default function CropHealth() {
           )}
         </div>
       </div>
+
+      {/* Image-based disease detection (YOLOv8) */}
+      <DiseaseDetect />
 
       {/* NDVI curve */}
       <Card className="p-7">

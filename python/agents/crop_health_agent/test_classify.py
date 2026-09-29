@@ -27,13 +27,13 @@ def test_label_from_ndvi_covers_all_four_levels():
     assert _label_from_ndvi(q25 - 0.05, "Vegetative") == "Severe"
 
 
-def test_classifier_trained_with_80_20_stratified_split(store):
-    acc = store.train_test_accuracy
-    assert 0.0 <= acc["train_accuracy"] <= 1.0
-    assert 0.0 <= acc["test_accuracy"] <= 1.0
-    # 1400 growth-stage records -> 20% held out is 280
-    cm = acc["confusion_matrix"]
-    assert cm.values.sum() == 280
+def test_stress_is_deterministic_rule_not_leaky_model(store):
+    # Revision: stress is a transparent NDVI-vs-benchmark rule, not a learned model
+    # that leaks NDVI into itself. Assert the honest report shape.
+    m = store.stress_model
+    assert m["method"] == "deterministic_ndvi_benchmark_rule"
+    assert sum(m["label_distribution"].values()) == m["records"]
+    assert set(m["label_distribution"].keys()) == set(STRESS_LEVELS)
 
 
 def test_predict_stress_returns_valid_label(store):

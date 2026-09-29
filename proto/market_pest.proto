@@ -1,0 +1,68 @@
+syntax = "proto3";
+package paddy;
+
+// Self-contained proto for the Market Price and Pest Risk agents. Kept separate
+// from paddy_agents.proto so regenerating these stubs never touches the existing
+// (orchestrator/weather/soil/crop-health) stubs.
+
+message AgentMeta {
+  string agent_id   = 1;
+  string agent_name = 2;
+  string timestamp  = 3;
+  float  confidence = 4;
+  string notes      = 5;
+}
+
+// ── Market Price agent ──────────────────────────────────────────
+service MarketAgentService {
+  rpc GetMarketAdvisory (MarketRequest) returns (MarketResponse);
+}
+
+message MarketRequest {
+  string district = 1;
+  string season   = 2;
+  string variety  = 3; // optional
+}
+
+message MarketResponse {
+  AgentMeta metadata               = 1;
+  string    district               = 2;
+  string    crop_variety           = 3;
+  float     current_price_per_quintal = 4;
+  float     msp_price_per_quintal  = 5;
+  float     price_change_30d       = 6;
+  string    trend_direction        = 7; // RISING | FALLING | STABLE
+  string    sell_or_hold           = 8; // SELL | HOLD
+  string    best_selling_month     = 9;
+  string    reasoning              = 10;
+  string    market_demand          = 11;
+  string    supply_status          = 12;
+}
+
+// ── Pest Risk agent ─────────────────────────────────────────────
+service PestAgentService {
+  rpc GetPestRisk (PestRequest) returns (PestResponse);
+}
+
+message PestRequest {
+  string district     = 1;
+  string season       = 2;
+  string growth_stage = 3;
+  float  temperature  = 4;
+  float  humidity     = 5;
+  float  rainfall     = 6;
+}
+
+message PestResponse {
+  AgentMeta       metadata          = 1;
+  string          district          = 2;
+  string          season            = 3;
+  string          growth_stage      = 4;
+  string          risk_level        = 5; // LOW | MEDIUM | HIGH
+  int32           risk_score        = 6;
+  repeated string likely_pests      = 7;
+  repeated string likely_diseases   = 8;
+  string          preventive_action = 9;
+  int32           next_checkin_days = 10;
+  string          rule_matched      = 11;
+}

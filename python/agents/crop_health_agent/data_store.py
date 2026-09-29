@@ -1,21 +1,37 @@
+"""Crop-health data store.
+
+REVISION (leakage fix): the stress level was previously "predicted" by a
+GradientBoosting model that took NDVI (and NDVI-deviation) as inputs — but the
+label itself is defined by NDVI vs the stage benchmark, so the task was circular
+and reported a meaningless ~100% accuracy. We verified this honestly:
+
+    features WITHOUT ndvi  → 5-fold CV accuracy 0.36  (== the 0.36 majority baseline)
+    features WITH  ndvi_dev → 5-fold CV accuracy 0.97  (pure leakage; label IS the rule)
+
+i.e. the agronomic measurements carry no independent signal for this label and
+NDVI trivially reconstructs it. So the honest design is a **transparent,
+deterministic NDVI-vs-benchmark rule** — interpretable and correct — rather than
+a black box that launders the same rule as "machine learning". The real learned
+model in this project is the YOLOv8 leaf-image classifier (see Model Performance).
+"""
 import logging
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 from stage_profiles import STAGE_ORDER, STAGE_PROFILES, stage_index, stage_ndvi_median
 
 log = logging.getLogger("CROP_HEALTH.data_store")
 
 STRESS_LEVELS = ["Healthy", "Mild", "Moderate", "Severe"]
-FEATURE_COLUMNS = ["ndvi", "lai", "das", "height", "tillers", "ndvi_deviation", "stage_idx"]
 
 
 def _label_from_ndvi(ndvi, stage):
-    """4-level stress label from NDVI deviation against the stage's quartile baseline."""
+    """4-level stress label from NDVI vs the stage's data-derived quartile baseline.
+
+    This is the definition of "stress" in this system — a transparent agronomic
+    rule, not a learned target.
+    """
     q25, median, q75 = STAGE_PROFILES.get(stage, {}).get("ndvi", (0, 0, 0))
     if median == 0:
         return "Healthy" if ndvi == 0 else "Mild"
@@ -29,9 +45,7 @@ def _label_from_ndvi(ndvi, stage):
 
 
 class CropHealthDataStore:
-    """Loads the Karnataka paddy datasets, engineers the NDVI-deviation feature,
-    and trains a Gradient Boosting stress classifier (4 classes, 80/20 stratified split).
-    """
+    """Loads the Karnataka paddy datasets and applies the NDVI-benchmark stress rule."""
 
     def __init__(self, xlsx_path: str, main_csv_path: str):
         log.info("Loading crop health datasets...")
@@ -43,64 +57,27 @@ class CropHealthDataStore:
             "Seed_Variety", "Humidity_Percent", "Temperature_Celsius", "Pesticide_Sprays",
         ])
         log.info("  Growth stages: %d  Satellite: %d  Main: %d",
-                  len(self.gs_df), len(self.sat_df), len(self.main_df))
+                 len(self.gs_df), len(self.sat_df), len(self.main_df))
         self._build_profiles()
-        self.train_test_accuracy = self._train_stress_classifier()
+        self.stress_model = self._rule_report()
 
-    # ── NDVI-deviation feature engineering ──────────────────────
+    # ── stress rule reporting (honest; no learned-accuracy claim) ──
 
-    def _engineer_features(self):
-        rows = []
-        for _, r in self.gs_df.iterrows():
-            stage = r["Growth_Stage"]
-            ndvi = r["NDVI"]
-            median = stage_ndvi_median(stage)
-            rows.append({
-                "ndvi": ndvi,
-                "lai": r["Leaf_Area_Index"],
-                "das": r["Days_After_Sowing"],
-                "height": r["Plant_Height_cm"],
-                "tillers": r["Tiller_Count"],
-                "ndvi_deviation": ndvi - median,  # deviation from expected healthy NDVI at this stage
-                "stage_idx": stage_index(stage),
-                "label": _label_from_ndvi(ndvi, stage),
-            })
-        return pd.DataFrame(rows)
-
-    def _train_stress_classifier(self):
-        df = self._engineer_features()
-        X = df[FEATURE_COLUMNS].values
-        y = df["label"].values
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, stratify=y, random_state=42
-        )
-
-        self._clf = GradientBoostingClassifier(
-            n_estimators=150, max_depth=4, learning_rate=0.08, random_state=42
-        )
-        self._clf.fit(X_train, y_train)
-
-        y_pred = self._clf.predict(X_test)
-        train_acc = accuracy_score(y_train, self._clf.predict(X_train))
-        test_acc = accuracy_score(y_test, y_pred)
-        log.info("  Stress classifier — train acc: %.3f  held-out test acc: %.3f", train_acc, test_acc)
-        log.info("\n%s", classification_report(y_test, y_pred, labels=STRESS_LEVELS, zero_division=0))
-
-        cm = confusion_matrix(y_test, y_pred, labels=STRESS_LEVELS)
-        cm_df = pd.DataFrame(cm, index=[f"true_{l}" for l in STRESS_LEVELS],
-                              columns=[f"pred_{l}" for l in STRESS_LEVELS])
-        log.info("  Confusion matrix (rows=true, cols=predicted):\n%s", cm_df.to_string())
-
+    def _rule_report(self):
+        """Describe the deterministic rule and how the dataset labels distribute."""
+        labels = [_label_from_ndvi(r["NDVI"], r["Growth_Stage"]) for _, r in self.gs_df.iterrows()]
+        dist = {lvl: int(pd.Series(labels).eq(lvl).sum()) for lvl in STRESS_LEVELS}
+        log.info("  Stress = deterministic NDVI-vs-benchmark rule (no ML). "
+                 "Label distribution over %d records: %s", len(labels), dist)
         return {
-            "train_accuracy": train_acc,
-            "test_accuracy": test_acc,
-            "confusion_matrix": cm_df,
-            "classification_report": classification_report(
-                y_test, y_pred, labels=STRESS_LEVELS, zero_division=0, output_dict=True),
+            "method": "deterministic_ndvi_benchmark_rule",
+            "records": len(labels),
+            "label_distribution": dist,
+            "note": "NDVI vs stage Q25/median/Q75. Not a learned model — the real ML "
+                    "model in this project is the YOLOv8 image classifier.",
         }
 
-    # ── Profiles ─────────────────────────────────────────────────
+    # ── profiles ──────────────────────────────────────────────────
 
     def _build_profiles(self):
         self._profiles = {}
@@ -120,14 +97,9 @@ class CropHealthDataStore:
             }
         log.info("  Built %d district x season x stage profiles", len(self._profiles))
 
-    # ── Query methods ────────────────────────────────────────────
+    # ── query methods ─────────────────────────────────────────────
 
     def get_stage_profile(self, district, season, stage):
-        """Observed profile for one district x season x stage.
-
-        Falls back to the season-wide average for that stage, so a district with
-        no record still gets a real observation rather than the global median.
-        """
         key = (district, season, stage)
         if key in self._profiles:
             return self._profiles[key]
@@ -139,13 +111,14 @@ class CropHealthDataStore:
         return {k: float(np.mean([p[k] for p in peers])) for k in peers[0]}
 
     def predict_stress(self, ndvi, lai, das, height, tillers, stage):
-        median = stage_ndvi_median(stage)
-        X = np.array([[ndvi, lai, das, height, tillers, ndvi - median, stage_index(stage)]])
-        return self._clf.predict(X)[0]
+        """Deterministic NDVI-benchmark rule. The lai/das/height/tillers args are
+        kept for call-site compatibility but do not affect the label (they carry no
+        independent signal for it — see the module docstring)."""
+        return _label_from_ndvi(ndvi, stage)
 
     def get_satellite(self, district, year, month):
         sub = self.sat_df[(self.sat_df["District"] == district) &
-                           (self.sat_df["Year"] == year) & (self.sat_df["Month"] == month)]
+                          (self.sat_df["Year"] == year) & (self.sat_df["Month"] == month)]
         if sub.empty:
             sub = self.sat_df[(self.sat_df["District"] == district) & (self.sat_df["Month"] == month)]
         if sub.empty:

@@ -1,0 +1,46 @@
+{
+  "versions": [
+    {
+      "version": "v1",
+      "date": "2026-09-28",
+      "classes": 3,
+      "train_images": 96,
+      "val_images": 24,
+      "accuracy": 1.0,
+      "trustworthy": false,
+      "note": "UCI 3-class set (120 imgs). 100% on a 24-image val set is a red flag — too small and too easy to be meaningful."
+    },
+    {
+      "version": "v2",
+      "date": "2026-09-28",
+      "classes": 4,
+      "train_images": 3264,
+      "val_images": 814,
+      "accuracy": 0.929,
+      "trustworthy": true,
+      "note": "4-class dataset (4,078 imgs, adds Healthy + Leaf/Neck Blast). Honest 92.9% on 814 held-out images, plus a leaf-validity gate."
+    }
+  ],
+  "revisions": [
+    {
+      "title": "Fixed data leakage in the tabular stress classifier",
+      "detail": "It scored ~100% because the NDVI-derived label was predicted from NDVI itself. Verified with CV (0.36 without NDVI == baseline; 0.97 with it == leakage) and replaced the black box with a transparent NDVI-vs-benchmark rule."
+    },
+    {
+      "title": "Added a leaf-validity gate to image scanning",
+      "detail": "A classifier confidently labelled a face as a disease. Now an NDVI-style vegetation index runs first and rejects non-foliage (face crop = 0.1% vs leaves ~10%), so no false disease labels."
+    },
+    {
+      "title": "Distinct disease labels",
+      "detail": "Leaf Blast and Neck Blast are now separate classes/treatments instead of a duplicated 'Rice Blast'."
+    },
+    {
+      "title": "Completed the agent mesh",
+      "detail": "Market Price and Pest Risk became real gRPC agents (were gateway stubs). System Status now shows 5/5 agents online and the orchestrator fans out to all five."
+    },
+    {
+      "title": "Added a test suite",
+      "detail": "Pytest coverage for the vegetation gate, treatment mapping, the deterministic stress rule, and the new agents."
+    }
+  ]
+}

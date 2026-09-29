@@ -3,6 +3,7 @@ grpcio
 grpcio-tools
 pandas
 numpy
+scipy
 scikit-learn
 requests
 openpyxl
@@ -11,6 +12,7 @@ joblib
 # REST gateway (bridges the browser to the gRPC agent mesh)
 fastapi
 uvicorn[standard]
+python-multipart
 
 # Tests
 pytest

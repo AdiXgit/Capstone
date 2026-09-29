@@ -11,6 +11,7 @@ the dashboard can be honest about where a number came from.
 import os
 import sys
 import time
+import json
 import socket
 import logging
 from datetime import datetime, timedelta
@@ -19,7 +20,7 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 import requests
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -31,6 +32,8 @@ sys.path.insert(0, os.path.join(REPO, "python", "agents", "crop_health_agent"))
 import grpc
 import paddy_agents_pb2 as pb
 import paddy_agents_pb2_grpc as pb_grpc
+import market_pest_pb2 as mp
+import market_pest_pb2_grpc as mp_grpc
 
 from stage_profiles import (
     STAGE_ORDER, STAGE_PROFILES, DISTRICT_COORDS, KARNATAKA_CENTROID,
@@ -524,6 +527,125 @@ def _crop_health_impl(district: str, season: str = "Kharif",
     }
 
 
+@lru_cache(maxsize=1)
+def _detector():
+    """Lazy YOLO detector singleton (imports torch/ultralytics only on first use)."""
+    from disease_detection import get_detector
+    return get_detector()
+
+
+@app.get("/api/crop-health/detect/status")
+def detect_status():
+    """Whether the image-detection stack is installed and which model would load."""
+    try:
+        det = _detector()
+        if not det.available:
+            note = ("Vision stack not installed — run `pip install -r requirements-vision.txt` "
+                    "to enable image disease detection.")
+        elif det.is_finetuned:
+            note = "Fine-tuned paddy model ready."
+        else:
+            note = ("Vision stack ready, but no fine-tuned model — using base pretrained weights. "
+                    "Run scripts/download_paddy_dataset.py + scripts/train_yolo_classifier.py.")
+        return {
+            "available": det.available,
+            "model": os.path.basename(det.model_path),
+            "is_finetuned": det.is_finetuned,
+            "note": note,
+        }
+    except Exception as e:
+        return {"available": False, "model": None, "is_finetuned": False,
+                "note": f"Image detection unavailable: {e}"}
+
+
+@app.get("/api/crop-health/model-metrics")
+def model_metrics():
+    """Held-out evaluation metrics for the fine-tuned YOLO disease model.
+
+    Populated by scripts/evaluate_yolo.py (also run at the end of training). Returns
+    a `trained: false` stub until a model has been trained + evaluated, so the
+    dashboard can render an honest 'not trained yet' state.
+    """
+    path = os.path.join(REPO, "models", "paddy_disease_metrics.json")
+    if not os.path.exists(path):
+        return {
+            "trained": False,
+            "target_accuracy": 0.75,
+            "note": ("No trained model yet. Run scripts/download_paddy_dataset.py, then "
+                     "scripts/train_yolo_classifier.py to fine-tune and evaluate."),
+        }
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception as e:
+        return {"trained": False, "target_accuracy": 0.75, "note": f"Could not read metrics: {e}"}
+
+
+@app.post("/api/crop-health/detect")
+async def detect_disease(file: UploadFile = File(...)):
+    """Classify an uploaded paddy leaf image into a disease + KVK treatment.
+
+    This is the YOLOv8 image path of the Crop Health agent. It complements the
+    NDVI/tabular GetCropHealthStatus with a direct look at the leaf itself.
+    """
+    started = time.time()
+    from disease_detection import DetectorUnavailable
+    try:
+        det = _detector()
+    except Exception as e:
+        return {"error": "detector_unavailable", "detail": str(e),
+                "_meta": meta("GATEWAY_DATASET", started, "CROP_HEALTH",
+                              "Install requirements-vision.txt to enable image detection.")}
+
+    image_bytes = await file.read()
+    if not image_bytes:
+        return {"error": "empty_file", "detail": "No image bytes received."}
+
+    try:
+        result = det.predict(image_bytes)
+    except DetectorUnavailable as e:
+        return {"error": "detector_unavailable", "detail": str(e)}
+    except ValueError as e:
+        return {"error": "bad_image", "detail": str(e)}
+
+    result["filename"] = file.filename
+    result["_meta"] = meta("YOLO_MODEL", started, "CROP_HEALTH",
+                           f"Image classified by {result['model']['path']}.")
+    return result
+
+
+@app.post("/api/crop-health/detect/explain")
+async def detect_explain(file: UploadFile = File(...)):
+    """Occlusion-saliency heatmap showing which regions drove the prediction."""
+    started = time.time()
+    try:
+        det = _detector()
+    except Exception as e:
+        return {"error": "detector_unavailable", "detail": str(e)}
+    image_bytes = await file.read()
+    if not image_bytes:
+        return {"error": "empty_file", "detail": "No image bytes received."}
+    try:
+        r = det.explain(image_bytes)
+    except Exception as e:
+        return {"error": "explain_failed", "detail": str(e)}
+    r["_meta"] = meta("YOLO_MODEL", started, "CROP_HEALTH", "Occlusion saliency overlay.")
+    return r
+
+
+@app.get("/api/crop-health/model-history")
+def model_history():
+    """Version history + revision log for the Model Performance page."""
+    path = os.path.join(REPO, "models", "model_history.json")
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except Exception as e:
+            return {"versions": [], "revisions": [], "note": f"read error: {e}"}
+    return {"versions": [], "revisions": []}
+
+
 @app.get("/api/crop-health/matrix")
 def get_treatment_matrix():
     return {
@@ -548,10 +670,6 @@ MSP_2025 = 2320.0
 def _market_impl(district: str, season: str = "Kharif", variety: str = ""):
     started = time.time()
     online, _ = agent_online("MARKET_PRICE")
-    if online:
-        notes = "Market agent reachable but GetMarketAdvisory is not implemented yet."
-    else:
-        notes = "Market agent not built yet — computed from Karnataka_Market_Prices.csv."
 
     df = market_df()
     varieties = sorted(df["Variety"].dropna().unique().tolist())
@@ -594,7 +712,7 @@ def _market_impl(district: str, season: str = "Kharif", variety: str = ""):
             "supply": str(vd["Supply_Status"].iloc[-1]),
         })
 
-    return {
+    result = {
         "district": district,
         "crop_variety": chosen,
         "varieties": varieties,
@@ -609,8 +727,31 @@ def _market_impl(district: str, season: str = "Kharif", variety: str = ""):
         "variety_table": variety_table,
         "market_demand": str(recent["Market_Demand"].iloc[-1]),
         "supply_status": str(recent["Supply_Status"].iloc[-1]),
-        "_meta": meta("GATEWAY_DATASET", started, "MARKET_PRICE", notes),
+        "_meta": meta("GATEWAY_DATASET", started, "MARKET_PRICE",
+                      "Market agent offline — computed from Karnataka_Market_Prices.csv"),
     }
+
+    # Prefer the live Market agent for the core advisory (keeps trend/table local).
+    if online:
+        try:
+            with channel("MARKET_PRICE") as ch:
+                r = mp_grpc.MarketAgentServiceStub(ch).GetMarketAdvisory(
+                    mp.MarketRequest(district=district, season=season, variety=variety), timeout=3)
+                result.update({
+                    "crop_variety": r.crop_variety,
+                    "current_price_per_quintal": round(r.current_price_per_quintal, 0),
+                    "price_change_30d": round(r.price_change_30d, 0),
+                    "trend_direction": r.trend_direction,
+                    "sell_or_hold": r.sell_or_hold,
+                    "best_selling_month": r.best_selling_month,
+                    "reasoning": r.reasoning,
+                    "market_demand": r.market_demand,
+                    "supply_status": r.supply_status,
+                    "_meta": meta("GRPC_AGENT", started, "MARKET_PRICE"),
+                })
+        except Exception as e:
+            log.warning("Market agent call failed, using dataset: %s", e)
+    return result
 
 
 # ────────────────────────────────────────────────────────────────
@@ -620,8 +761,6 @@ def _market_impl(district: str, season: str = "Kharif", variety: str = ""):
 def _pest_impl(district: str, season: str = "Kharif", stage: str = "Vegetative"):
     started = time.time()
     online, _ = agent_online("PEST_RISK")
-    notes = ("Pest agent reachable but GetPestRisk is not implemented yet." if online
-             else "Pest agent not built yet — KVK rules evaluated in the gateway.")
 
     try:
         w = _weather_impl(district, season, stage)
@@ -676,7 +815,7 @@ def _pest_impl(district: str, season: str = "Kharif", stage: str = "Vegetative")
     else:
         preventive = "Maintain weekly scouting. No prophylactic spray is justified at this risk level."
 
-    return {
+    result = {
         "district": district,
         "season": season,
         "growth_stage": stage,
@@ -692,8 +831,30 @@ def _pest_impl(district: str, season: str = "Kharif", stage: str = "Vegetative")
         "historical_disease_incidence": hist.get("disease"),
         "avg_sprays_per_season": round(float(hist.get("sprays", 4.0)), 1),
         "conditions": {"temperature_max": temp, "humidity_percent": humidity, "rainfall_mm": rainfall},
-        "_meta": meta("GATEWAY_DATASET", started, "PEST_RISK", notes),
+        "_meta": meta("GATEWAY_DATASET", started, "PEST_RISK",
+                      "Pest agent offline — KVK rules evaluated in the gateway."),
     }
+
+    # Prefer the live Pest agent (same rule engine), passing current weather in.
+    if online:
+        try:
+            with channel("PEST_RISK") as ch:
+                r = mp_grpc.PestAgentServiceStub(ch).GetPestRisk(mp.PestRequest(
+                    district=district, season=season, growth_stage=stage,
+                    temperature=float(temp), humidity=float(humidity), rainfall=float(rainfall)), timeout=3)
+                result.update({
+                    "risk_level": r.risk_level,
+                    "risk_score": r.risk_score,
+                    "likely_pests": list(r.likely_pests),
+                    "likely_diseases": list(r.likely_diseases),
+                    "preventive_action": r.preventive_action,
+                    "next_checkin_days": r.next_checkin_days,
+                    "rule_matched": r.rule_matched,
+                    "_meta": meta("GRPC_AGENT", started, "PEST_RISK"),
+                })
+        except Exception as e:
+            log.warning("Pest agent call failed, using gateway rules: %s", e)
+    return result
 
 
 
@@ -736,7 +897,7 @@ AGENT_INFO = {
     "WEATHER":      ("Weather Agent", "Go", "Open-Meteo live · 7-day forecast · stage-aware alerts"),
     "CROP_HEALTH":  ("Crop Health Agent", "Python", "NDVI deviation · Gradient Boosting · KVK treatment"),
     "MARKET_PRICE": ("Market Price Agent", "Python", "Price trend · sell/hold advisory"),
-    "PEST_RISK":    ("Pest Risk Agent", "Go", "KVK rule engine · stage × weather risk"),
+    "PEST_RISK":    ("Pest Risk Agent", "Python", "KVK rule engine · stage × weather risk"),
 }
 
 
@@ -836,9 +997,113 @@ def overview(district: str = Query(...), season: str = Query("Kharif"), stage: s
     }
 
 
+@app.get("/api/orchestrator")
+def orchestrator_query(district: str = Query(...), season: str = Query("Kharif"),
+                       stage: str = Query(""), query_type: str = Query("FULL")):
+    """Cross-agent path: ask the Go/Python orchestrator to fan out to the agent
+    mesh and synthesize one advisory.
+
+    Unlike /api/overview (which fans in from the gateway), this routes a single
+    FarmerQuery through the OrchestratorService, which concurrently calls each
+    registered agent over gRPC and merges their results. The response exposes the
+    per-agent breakdown so the dashboard can show the agents working together.
+    """
+    started = time.time()
+    online, _ = agent_online("ORCHESTRATOR")
+    if not online:
+        return {
+            "online": False,
+            "recommendation": "",
+            "agent_results": [],
+            "overall_confidence": 0.0,
+            "_meta": meta("GATEWAY_DATASET", started, "ORCHESTRATOR",
+                          "Orchestrator offline. Start it with `python python/orchestrator/orchestrator_server.py` "
+                          "(or scripts/run_local.sh) to enable cross-agent routing."),
+        }
+
+    # Derive days-after-transplant so the orchestrator can pass stage context down.
+    if stage and stage in STAGE_PROFILES:
+        lo, hi = STAGE_PROFILES[stage]["das"]
+        dat = int((lo + hi) / 2)
+    else:
+        dat = das_from_season(season)
+
+    try:
+        with channel("ORCHESTRATOR") as ch:
+            stub = pb_grpc.OrchestratorServiceStub(ch)
+            resp = stub.RouteQuery(pb.FarmerQuery(
+                query_id=f"ui-{int(time.time())}",
+                farmer_id="dashboard",
+                district=district, season=season,
+                query_type=query_type, days_after_transplant=dat,
+            ), timeout=15)
+    except Exception as e:
+        log.warning("Orchestrator RouteQuery failed: %s", e)
+        return {
+            "online": True, "recommendation": "", "agent_results": [],
+            "overall_confidence": 0.0,
+            "_meta": meta("GRPC_AGENT", started, "ORCHESTRATOR", f"RouteQuery error: {e}"),
+        }
+
+    agent_results = []
+    for r in resp.agent_results:
+        try:
+            payload = json.loads(r.result_json) if r.result_json else {}
+        except json.JSONDecodeError:
+            payload = {"raw": r.result_json}
+        agent_results.append({
+            "agent_name": r.agent_name,
+            "status": r.status,
+            "confidence": round(r.confidence, 3),
+            "payload": payload,
+        })
+
+    return {
+        "online": True,
+        "query_id": resp.query_id,
+        "district": district,
+        "season": season,
+        "days_after_transplant": dat,
+        "query_type": query_type,
+        "recommendation": resp.recommendation,
+        "overall_confidence": round(resp.overall_confidence, 3),
+        "agent_results": agent_results,
+        "agents_consulted": len(agent_results),
+        "timestamp": resp.timestamp,
+        "_meta": meta("GRPC_AGENT", started, "ORCHESTRATOR",
+                      f"Fan-out to {len(agent_results)} agents via OrchestratorService.RouteQuery."),
+    }
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "krishisense-gateway"}
+
+
+# ────────────────────────────────────────────────────────────────
+# STATIC FRONTEND (single-origin demo)
+# When frontend/dist exists, serve the built dashboard from the gateway so one
+# tunnel URL serves both the app and the API (no CORS, no separate host). Mounted
+# LAST so all /api/* routes above take precedence. SPA deep links fall back to
+# index.html.
+# ────────────────────────────────────────────────────────────────
+_DIST = os.path.join(REPO, "frontend", "dist")
+if os.path.isdir(_DIST):
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    _assets = os.path.join(_DIST, "assets")
+    if os.path.isdir(_assets):
+        app.mount("/assets", StaticFiles(directory=_assets), name="assets")
+
+    @app.get("/{full_path:path}")
+    def spa_fallback(full_path: str):
+        candidate = os.path.join(_DIST, full_path)
+        if full_path and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(os.path.join(_DIST, "index.html"))
+
+    log.info("Serving built frontend from %s at /", _DIST)
 
 
 if __name__ == "__main__":

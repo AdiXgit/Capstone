@@ -14,3 +14,15 @@ dist/
 
 # OS
 .DS_Store
+
+# Datasets (too large for git)
+data/hf_rice/
+data/paddy_disease/
+
+# Model weights & training artifacts
+*.pt
+runs/
+yolov8n-cls.pt
+
+# Binaries
+.bin/

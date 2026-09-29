@@ -1,0 +1,7 @@
+# Image disease detection (YOLOv8) — optional, heavier stack.
+# Install on top of requirements.txt to enable /api/crop-health/detect and training:
+#   pip install -r requirements.txt -r requirements-vision.txt
+ultralytics>=8.2.0        # YOLOv8 (pulls in torch, torchvision)
+pillow>=10.0.0
+opencv-python-headless>=4.8.0
+kagglehub>=0.3.0          # dataset download (scripts/download_paddy_dataset.py)

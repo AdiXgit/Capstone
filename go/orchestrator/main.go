@@ -377,9 +377,10 @@ func agentHostFromEnv(agentType string) string {
 }
 
 func agentPortFromEnv(agentType string) int32 {
+	// Ports match docker-compose.yml: soil 50052, weather 50053, crop-health 50054.
 	defaults := map[string]int32{
-		"WEATHER":     50052,
-		"SOIL":        50053,
+		"SOIL":        50052,
+		"WEATHER":     50053,
 		"CROP_HEALTH": 50054,
 	}
 	if p, ok := defaults[agentType]; ok {
