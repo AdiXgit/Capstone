@@ -8,7 +8,7 @@
       "val_images": 24,
       "accuracy": 1.0,
       "trustworthy": false,
-      "note": "UCI 3-class set (120 imgs). 100% on a 24-image val set is a red flag — too small and too easy to be meaningful."
+      "note": "UCI 3-class set (120 imgs). 100% on a 24-image val set is a red flag \u2014 too small and too easy to be meaningful."
     },
     {
       "version": "v2",
@@ -41,6 +41,14 @@
     {
       "title": "Added a test suite",
       "detail": "Pytest coverage for the vegetation gate, treatment mapping, the deterministic stress rule, and the new agents."
+    },
+    {
+      "title": "Hardened the plant gate against non-plant images",
+      "detail": "The single-cue Excess-Green gate passed anything green: an RGB-backlit keyboard scored green_fraction 0.38 (63x the 0.006 floor) and was reported as 'Neck Blast, HIGH, 62%'. Replaced it with four cues calibrated below the 1st percentile of the 814 held-out leaves - foliage hue with a neon-saturation exclusion, exposure, hue dispersion and leaf texture, plus a chroma check for greyscale screenshots. Rejects 0/9 -> 9/9 of a negative set while refusing only 1.0% of real leaves, and the rejection names the cue that failed so the farmer knows what to retake."
+    },
+    {
+      "title": "Added a prediction confidence gate",
+      "detail": "The 4-class softmax has no 'unknown' class, and Neck Blast scores top1=1.000 on every val image, so it absorbed out-of-distribution photos. Predictions now need top-1, margin over the runner-up and normalised entropy to agree before a disease is named: CONFIRMED (>=0.80/0.45/<=0.35), PROVISIONAL (>=0.55/0.20/<=0.70, severity capped one notch and flagged), otherwise the diagnosis is withheld. On the val set this answers 95.5% of images at 93.2% accuracy, up from 91.0% when every image was answered."
     }
   ]
 }

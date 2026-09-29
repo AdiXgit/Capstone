@@ -211,17 +211,38 @@ export interface DiseasePrediction {
   is_paddy_condition: boolean;
 }
 
+/** CONFIRMED = trust it; PROVISIONAL = show but flag; ABSTAIN = model not sure
+ *  enough to name a disease; REJECTED = the image isn't a paddy plant at all. */
+export type ConfidenceLevel = "CONFIRMED" | "PROVISIONAL" | "ABSTAIN" | "REJECTED";
+
 export interface DetectResponse {
   is_leaf?: boolean;
   vegetation_index?: number;
   vegetation_note?: string;
   low_vegetation?: boolean;
+  /** 0-1 composite score that the frame really shows a plant. */
+  plant_score?: number;
+  /** Why the botanical gate refused the image (present when is_leaf is false). */
+  reject_reasons?: string[];
+  confidence_level?: ConfidenceLevel;
+  confidence_note?: string;
+  certainty?: {
+    top1: number;
+    margin: number;
+    entropy: number;
+    thresholds: {
+      confirmed: { top1: number; margin: number; entropy: number };
+      minimum: { top1: number; margin: number; entropy: number };
+    };
+  };
   message?: string;
   predicted_disease?: string | null;
   confidence?: number | null;
-  severity?: string;
-  treatment?: string;
-  is_paddy_condition?: boolean;
+  severity?: string | null;
+  /** Table severity before the provisional-confidence downgrade. */
+  reported_severity?: string;
+  treatment?: string | null;
+  is_paddy_condition?: boolean | null;
   predictions?: DiseasePrediction[];
   model?: { path: string; is_finetuned: boolean; note: string };
   latency_ms?: number;

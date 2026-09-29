@@ -10,25 +10,86 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(BASE, "data")
 
 
-# ── Leaf-validity (vegetation) gate ──────────────────────────────
-def test_vegetation_gate_separates_leaf_from_nonleaf():
-    from disease_detection import vegetation_index, LEAF_REJECT
-
-    green = Image.new("RGB", (256, 256), (60, 160, 60))   # foliage-like
-    gray = Image.new("RGB", (256, 256), (128, 128, 128))  # wall
-    skin = Image.new("RGB", (256, 256), (210, 150, 120))  # face-like
-
-    assert vegetation_index(green)["green_fraction"] >= LEAF_REJECT
-    assert vegetation_index(gray)["green_fraction"] < LEAF_REJECT
-    assert vegetation_index(skin)["green_fraction"] < LEAF_REJECT
+# ── Botanical plant gate ─────────────────────────────────────────
+def _gate(img):
+    from disease_detection import vegetation_index, plant_gate
+    return plant_gate(vegetation_index(img))
 
 
-def test_vegetation_gate_on_a_noisy_green_leaf():
-    from disease_detection import vegetation_index, LEAF_REJECT
-    rng = np.random.default_rng(0)
-    arr = rng.integers(0, 60, (256, 256, 3), dtype=np.uint8)
-    arr[..., 1] += 120  # boost green channel → vegetation
-    assert vegetation_index(Image.fromarray(arr))["green_fraction"] >= LEAF_REJECT
+def _leafy(seed=0):
+    """A textured, daylight-bright green patch that stands in for foliage."""
+    rng = np.random.default_rng(seed)
+    arr = rng.integers(0, 70, (256, 256, 3), dtype=np.uint8)
+    arr[..., 1] = np.clip(arr[..., 1].astype(int) + 150, 0, 255).astype(np.uint8)
+    arr[..., 0] = np.clip(arr[..., 0].astype(int) + 70, 0, 255).astype(np.uint8)
+    arr[..., 2] = np.clip(arr[..., 2].astype(int) + 55, 0, 255).astype(np.uint8)
+    return Image.fromarray(arr)
+
+
+def test_gate_accepts_textured_foliage():
+    assert _gate(_leafy())["is_plant"] is True
+
+
+@pytest.mark.parametrize("colour", [(128, 128, 128), (210, 150, 120), (120, 170, 235)])
+def test_gate_rejects_flat_nonplant_surfaces(colour):
+    """Walls, skin and sky have no leaf texture — the classifier must not run."""
+    assert _gate(Image.new("RGB", (256, 256), colour))["is_plant"] is False
+
+
+def test_gate_rejects_flat_green_surface():
+    """A painted green wall is green but has zero texture — the old single-cue
+    Excess-Green gate passed it."""
+    g = _gate(Image.new("RGB", (256, 256), (90, 140, 85)))
+    assert g["is_plant"] is False
+    assert any("texture" in r for r in g["reasons"])
+
+
+def test_gate_rejects_rgb_keyboard_regression():
+    """Regression: an RGB-backlit keyboard scored green_fraction=0.38 under the old
+    gate and was reported as 'Neck Blast, HIGH, 62%'. Saturated multi-hue lighting
+    on a dark scene must be rejected."""
+    rng = np.random.default_rng(1)
+    arr = np.zeros((256, 256, 3), dtype=np.uint8)
+    for i in range(0, 256, 12):  # vivid rainbow key stripes on a dark desk
+        h = rng.random()
+        c = np.clip([abs(h * 6 - 3) - 1, 2 - abs(h * 6 - 2), 2 - abs(h * 6 - 4)], 0, 1)
+        arr[:, i:i + 7] = (c * 230).astype(np.uint8)
+    g = _gate(Image.fromarray(arr))
+    assert g["is_plant"] is False
+    assert any("multi-coloured" in r or "dark" in r for r in g["reasons"])
+
+
+def test_gate_rejects_greyscale_screenshot():
+    """A black-on-white document/UI capture has texture but no colour at all."""
+    arr = np.full((256, 256, 3), 247, dtype=np.uint8)
+    for i in range(20, 236, 26):
+        arr[i:i + 7, 25:216] = 60
+    g = _gate(Image.fromarray(arr))
+    assert g["is_plant"] is False
+    assert any("colour" in r for r in g["reasons"])
+
+
+def test_gate_rejects_underexposed_frame():
+    dark = np.asarray(_leafy()).astype(np.float32) * 0.25
+    assert _gate(Image.fromarray(dark.astype(np.uint8)))["is_plant"] is False
+
+
+# ── Prediction confidence gate ───────────────────────────────────
+def test_confidence_grades_by_separation():
+    from disease_detection import grade_confidence, _distribution_stats
+    confident = grade_confidence(_distribution_stats(np.array([0.97, 0.02, 0.005, 0.005])))
+    assert confident["level"] == "CONFIRMED" and confident["accepted"]
+
+    # The exact distribution the keyboard produced: 0.62 / 0.20 / 0.14.
+    diffuse = grade_confidence(_distribution_stats(np.array([0.62, 0.20, 0.14, 0.04])))
+    assert diffuse["level"] == "ABSTAIN" and not diffuse["accepted"]
+
+
+def test_provisional_severity_is_capped():
+    """A merely-provisional call must not render as a red HIGH badge."""
+    from disease_detection import _cap_severity
+    assert _cap_severity("HIGH", "PROVISIONAL") == "MEDIUM"
+    assert _cap_severity("HIGH", "CONFIRMED") == "HIGH"
 
 
 # ── Treatment mapping (distinct blast types, OOD handling) ────────

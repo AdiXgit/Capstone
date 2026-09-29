@@ -70,5 +70,19 @@
     ]
   ],
   "eval_seconds": 14.7,
-  "evaluated_at": "2026-09-28T14:58:30Z"
+  "evaluated_at": "2026-09-28T14:58:30Z",
+  "gating": {
+    "answered_fraction": 0.9546,
+    "accuracy_on_answered": 0.9318,
+    "ungated_top1_accuracy": 0.9103,
+    "tiers": {
+      "CONFIRMED": 657,
+      "PROVISIONAL": 120,
+      "ABSTAIN": 29,
+      "REJECTED": 8
+    },
+    "plant_gate_false_reject_rate": 0.0098,
+    "negatives_leaking_a_label": 0,
+    "note": "Two gates sit in front of the raw classifier. Figures from scripts/calibrate_gate.py over the 814-image val split; the ungated number is the same model answering every image."
+  }
 }

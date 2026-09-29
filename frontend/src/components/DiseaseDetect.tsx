@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Upload, ScanEye, Loader2, X, Camera, Aperture, Flame } from "lucide-react";
-import { api, DetectResponse } from "../lib/api";
+import { api, DetectResponse, DiseasePrediction } from "../lib/api";
 import { Badge, Card, InfoBox } from "./ui";
 
 const SEVERITY_BADGE: Record<string, string> = {
@@ -11,6 +11,62 @@ const SEVERITY_BADGE: Record<string, string> = {
   NONE: "Healthy",
   UNKNOWN: "INFO",
 };
+
+/** Ranked class probabilities. `muted` greys them out when no diagnosis is given. */
+function PredictionBars({ predictions, muted }: { predictions: DiseasePrediction[]; muted?: boolean }) {
+  return (
+    <div>
+      <div className="label-cap mb-2">{muted ? "Ranking (not a diagnosis)" : "Top predictions"}</div>
+      <div className="space-y-2">
+        {predictions.map((p) => (
+          <div key={p.raw_label} className="flex items-center gap-3">
+            <div className="w-40 shrink-0 truncate text-[13px] text-ink-soft" title={p.disease}>
+              {p.disease}
+            </div>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-forest-100">
+              <div
+                className={`h-full rounded-full ${muted ? "bg-ink-muted/40" : "bg-forest-600"}`}
+                style={{ width: `${Math.round(p.confidence * 100)}%` }}
+              />
+            </div>
+            <div className="w-12 text-right text-[12px] text-ink-muted">{(p.confidence * 100).toFixed(0)}%</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Shows the three statistics the confidence gate actually tests, against the
+ *  threshold each one has to clear, so the decision is auditable rather than magic. */
+function CertaintyReadout({ c }: { c: NonNullable<DetectResponse["certainty"]> }) {
+  const rows = [
+    { k: "Top-1 probability", v: c.top1, min: c.thresholds.minimum.top1, higher: true },
+    { k: "Margin over runner-up", v: c.margin, min: c.thresholds.minimum.margin, higher: true },
+    { k: "Spread (entropy)", v: c.entropy, min: c.thresholds.minimum.entropy, higher: false },
+  ];
+  return (
+    <div>
+      <div className="label-cap mb-2">Why this confidence level</div>
+      <div className="space-y-1">
+        {rows.map((r) => {
+          const pass = r.higher ? r.v >= r.min : r.v <= r.min;
+          return (
+            <div key={r.k} className="flex items-center justify-between gap-3 text-[12.5px]">
+              <span className="text-ink-soft">{r.k}</span>
+              <span className="flex items-center gap-2 tabular-nums">
+                <span className="text-ink-muted">
+                  {r.v.toFixed(2)} {r.higher ? "≥" : "≤"} {r.min.toFixed(2)}
+                </span>
+                <span className={pass ? "text-[#166534]" : "text-[#9A3412]"}>{pass ? "✓" : "✗"}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function DiseaseDetect() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -216,24 +272,56 @@ export default function DiseaseDetect() {
 
           {result && result.is_leaf === false && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="font-serif text-[22px] leading-none text-[#9A3412]">Not a paddy leaf</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-serif text-[22px] leading-none text-[#9A3412]">Not a paddy plant</span>
                 <span className="pill bg-[#FFEDD5] text-[#9A3412]">
-                  vegetation {((result.vegetation_index ?? 0) * 100).toFixed(1)}%
+                  plant score {((result.plant_score ?? 0) * 100).toFixed(0)}%
                 </span>
               </div>
-              <InfoBox tone="warning" title="No foliage detected — not classified">
-                {result.message ??
-                  "The image doesn't contain enough vegetation to be a paddy leaf. The disease model was not run."}
+              <InfoBox tone="warning" title="Rejected before classification">
+                The disease model was <strong>not run</strong> on this image.
               </InfoBox>
+              {result.reject_reasons && result.reject_reasons.length > 0 && (
+                <div>
+                  <div className="label-cap mb-2">Why it was rejected</div>
+                  <ul className="space-y-1.5">
+                    {result.reject_reasons.map((r) => (
+                      <li key={r} className="flex gap-2 text-[13px] leading-relaxed text-ink-soft">
+                        <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#9A3412]" />
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <p className="text-[12.5px] leading-relaxed text-ink-muted">
-                A leaf-validity gate (an NDVI-style vegetation index computed from the image) runs before the
-                classifier, so non-leaf images aren't given a false disease label.
+                A four-cue botanical gate (foliage hue, exposure, colour coherence and leaf texture) runs before the
+                classifier, so non-plant images can't be given a false disease label.
               </p>
             </div>
           )}
 
-          {result && result.is_leaf !== false && (
+          {result && result.is_leaf !== false && result.confidence_level === "ABSTAIN" && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-serif text-[22px] leading-none text-[#854D0E]">Inconclusive</span>
+                <span className="pill bg-[#FEF9C3] text-[#854D0E]">no diagnosis given</span>
+              </div>
+              <InfoBox tone="warning" title="The model isn't confident enough to name a disease">
+                {result.confidence_note}
+              </InfoBox>
+              {result.certainty && <CertaintyReadout c={result.certainty} />}
+              {result.predictions && result.predictions.length > 0 && (
+                <PredictionBars predictions={result.predictions} muted />
+              )}
+              <p className="text-[12.5px] leading-relaxed text-ink-muted">
+                Ranking shown for transparency only — no treatment is recommended on an uncertain call. Retake with a
+                single leaf filling the frame in even daylight.
+              </p>
+            </div>
+          )}
+
+          {result && result.is_leaf !== false && result.confidence_level !== "ABSTAIN" && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-serif text-[24px] leading-none text-forest-900">{result.predicted_disease}</span>
@@ -241,19 +329,39 @@ export default function DiseaseDetect() {
                 <span className="pill bg-[#F3F4F6] text-ink-muted">
                   {((result.confidence ?? 0) * 100).toFixed(1)}% confidence
                 </span>
-                {result.vegetation_index !== undefined && (
+                {result.confidence_level === "PROVISIONAL" ? (
+                  <span className="pill bg-[#FEF9C3] text-[#854D0E]" title={result.confidence_note}>
+                    provisional
+                  </span>
+                ) : (
+                  <span className="pill bg-[#DCFCE7] text-[#166534]" title={result.confidence_note}>
+                    confirmed
+                  </span>
+                )}
+                {result.plant_score !== undefined && (
                   <span
                     className={`pill ${result.low_vegetation ? "bg-[#FEF9C3] text-[#854D0E]" : "bg-[#DCFCE7] text-[#166534]"}`}
                     title={result.vegetation_note}
                   >
-                    leaf ✓ · veg {(result.vegetation_index * 100).toFixed(1)}%
+                    plant {(result.plant_score * 100).toFixed(0)}%
                   </span>
                 )}
               </div>
 
+              {result.confidence_level === "PROVISIONAL" && (
+                <InfoBox tone="warning" title="Provisional — confirm before spraying">
+                  {result.confidence_note}
+                  {result.reported_severity && result.reported_severity !== result.severity && (
+                    <>
+                      {" "}Severity is shown one notch below {result.reported_severity} because the call is not certain.
+                    </>
+                  )}
+                </InfoBox>
+              )}
+
               {result.low_vegetation && (
                 <InfoBox tone="warning">
-                  Low vegetation in frame — the prediction may be unreliable. Retake with the leaf filling the frame in
+                  Low foliage in frame — the prediction may be unreliable. Retake with the leaf filling the frame in
                   good light.
                 </InfoBox>
               )}
@@ -268,26 +376,10 @@ export default function DiseaseDetect() {
               <InfoBox title="KVK treatment recommendation">{result.treatment}</InfoBox>
 
               {result.predictions && result.predictions.length > 1 && (
-                <div>
-                  <div className="label-cap mb-2">Top predictions</div>
-                  <div className="space-y-2">
-                    {result.predictions.map((p) => (
-                      <div key={p.raw_label} className="flex items-center gap-3">
-                        <div className="w-40 shrink-0 truncate text-[13px] text-ink-soft" title={p.disease}>
-                          {p.disease}
-                        </div>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-forest-100">
-                          <div className="h-full rounded-full bg-forest-600"
-                            style={{ width: `${Math.round(p.confidence * 100)}%` }} />
-                        </div>
-                        <div className="w-12 text-right text-[12px] text-ink-muted">
-                          {(p.confidence * 100).toFixed(0)}%
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <PredictionBars predictions={result.predictions} />
               )}
+
+              {result.certainty && <CertaintyReadout c={result.certainty} />}
 
               {/* Explainability: occlusion saliency */}
               <div>
