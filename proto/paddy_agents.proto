@@ -246,3 +246,43 @@ message PestRiskResponse {
   repeated PestInfo pests          = 4;
   string            advisory        = 5;
 }
+// ══════════════════════════════════════════════════════
+// FARM INCOME AGENT SERVICE  (Aman) — Port 50057
+// Paste this at the END of proto/paddy_agents.proto
+// Uses Soil Agent (yield + fertilizer) and Market Agent (price)
+// ══════════════════════════════════════════════════════
+service IncomeAgentService {
+  rpc GetIncomeEstimate (IncomeRequest) returns (IncomeResponse);
+}
+
+message IncomeRequest {
+  string district          = 1;
+  string season            = 2;   // "Kharif" | "Rabi"
+  string variety           = 3;   // e.g. "BPT-5204"
+  float  area_ha           = 4;   // farm size in hectares
+  float  other_cost_per_ha = 5;   // labour, seed etc. (0 if unknown)
+}
+
+message PriceScenario {
+  string name              = 1;   // "msp" | "sell_now" | "hold_1_month"
+  float  price_per_quintal = 2;
+  float  gross_income      = 3;
+  float  net_income        = 4;
+}
+
+message IncomeResponse {
+  AgentMetadata          metadata              = 1;
+  string                 district              = 2;
+  string                 variety               = 3;
+  float                  area_ha               = 4;
+  float                  yield_kg_per_ha       = 5;
+  float                  total_yield_quintals  = 6;
+  float                  fertilizer_cost_total = 7;
+  float                  other_cost_total      = 8;
+  repeated PriceScenario scenarios             = 9;
+  float                  expected_net_income   = 10;  // "sell_now" scenario
+  string                 recommendation        = 11;  // "sell now" | "hold"
+  string                 best_month_to_sell    = 12;
+  string                 advisory              = 13;
+  repeated string        warnings              = 14;
+}

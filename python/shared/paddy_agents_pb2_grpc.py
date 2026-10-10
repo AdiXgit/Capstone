@@ -684,3 +684,90 @@ class PestRiskAgentService(object):
             timeout,
             metadata,
             _registered_method=True)
+
+
+class IncomeAgentServiceStub(object):
+    """══════════════════════════════════════════════════════
+    FARM INCOME AGENT SERVICE  (Aman) — Port 50057
+    Paste this at the END of proto/paddy_agents.proto
+    Uses Soil Agent (yield + fertilizer) and Market Agent (price)
+    ══════════════════════════════════════════════════════
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.GetIncomeEstimate = channel.unary_unary(
+                '/paddy.IncomeAgentService/GetIncomeEstimate',
+                request_serializer=paddy__agents__pb2.IncomeRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.IncomeResponse.FromString,
+                _registered_method=True)
+
+
+class IncomeAgentServiceServicer(object):
+    """══════════════════════════════════════════════════════
+    FARM INCOME AGENT SERVICE  (Aman) — Port 50057
+    Paste this at the END of proto/paddy_agents.proto
+    Uses Soil Agent (yield + fertilizer) and Market Agent (price)
+    ══════════════════════════════════════════════════════
+    """
+
+    def GetIncomeEstimate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_IncomeAgentServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'GetIncomeEstimate': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetIncomeEstimate,
+                    request_deserializer=paddy__agents__pb2.IncomeRequest.FromString,
+                    response_serializer=paddy__agents__pb2.IncomeResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'paddy.IncomeAgentService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('paddy.IncomeAgentService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class IncomeAgentService(object):
+    """══════════════════════════════════════════════════════
+    FARM INCOME AGENT SERVICE  (Aman) — Port 50057
+    Paste this at the END of proto/paddy_agents.proto
+    Uses Soil Agent (yield + fertilizer) and Market Agent (price)
+    ══════════════════════════════════════════════════════
+    """
+
+    @staticmethod
+    def GetIncomeEstimate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.IncomeAgentService/GetIncomeEstimate',
+            paddy__agents__pb2.IncomeRequest.SerializeToString,
+            paddy__agents__pb2.IncomeResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
