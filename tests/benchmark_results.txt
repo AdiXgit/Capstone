@@ -1,0 +1,12 @@
+target=localhost:50051 iterations=30 (1 warm-up call per type discarded)
+query         ok/total     min     p50     p95     max    mean  (ms)
+WEATHER        30/30       7.6     8.8    10.3    10.6     9.0
+SOIL           30/30     130.4   138.0   195.6   195.8   145.5
+MARKET         30/30     366.0   377.7   415.4   444.5   385.6
+PEST_RISK      60/60       7.3     8.6    25.3    26.2     9.9
+INCOME         30/30     486.5   997.0  1270.7  3346.8  1037.7
+CROP_HEALTH    30/60      21.4    22.9    25.2    25.6    23.2
+FULL          150/180   1433.1  1620.2  1845.8  1906.1  1655.5
+
+FULL under load: 60 requests, concurrency 8: wall 206.19s, 0.3 req/s, p50 26484 ms, p95 33040 ms, max 33628 ms
+RPC-level failures: 0 []

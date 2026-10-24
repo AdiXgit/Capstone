@@ -25,7 +25,7 @@ class MarketAgentServicer(pb2_grpc.MarketAgentServiceServicer):
 
     def GetMarketAdvisory(self, request, context):
         try:
-            variety = request.variety or "BPT-5204"
+            variety = request.crop if request.crop and request.crop.lower() != "paddy" else "BPT-5204"
             result = get_market_advisory(variety, district=request.district)
 
             return pb2.MarketResponse(

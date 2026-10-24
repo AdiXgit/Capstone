@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/karnataka-paddy/paddy-multiagent/proto"
+	pb "github.com/AdiXgit/Capstone/proto"
 )
 
 // ─────────────────────────────────────────────
@@ -23,9 +23,9 @@ import (
 
 type OrchestratorServer struct {
 	pb.UnimplementedOrchestratorServiceServer
-	mu             sync.RWMutex
+	mu               sync.RWMutex
 	registeredAgents map[string]*AgentConnection
-	queryCounter   int32
+	queryCounter     int32
 }
 
 type AgentConnection struct {
@@ -43,7 +43,7 @@ func NewOrchestratorServer() *OrchestratorServer {
 	}
 }
 
-// RegisterAgent — Python agents call this on startup
+// RegisterAgent — Python/Go agents call this on startup
 func (s *OrchestratorServer) RegisterAgent(
 	ctx context.Context, req *pb.AgentRegistration,
 ) (*pb.RegistrationAck, error) {
@@ -151,15 +151,18 @@ func (s *OrchestratorServer) resolveAgents(queryType string) []string {
 		"SOIL":        {"SOIL"},
 		"CROP_HEALTH": {"CROP_HEALTH", "WEATHER"},
 		"FERTILIZER":  {"SOIL", "WEATHER", "CROP_HEALTH"},
-		"FULL":        {"WEATHER", "SOIL", "CROP_HEALTH"},
+		"MARKET":      {"MARKET"},
+		"INCOME":      {"INCOME"},
+		"PEST_RISK":   {"PEST_RISK", "WEATHER"},
+		"FULL":        {"WEATHER", "SOIL", "CROP_HEALTH", "MARKET", "PEST_RISK", "INCOME"},
 	}
 	if agents, ok := routing[queryType]; ok {
 		return agents
 	}
-	return []string{"WEATHER", "SOIL", "CROP_HEALTH"}
+	return []string{"WEATHER", "SOIL", "CROP_HEALTH", "MARKET", "PEST_RISK", "INCOME"}
 }
 
-// callAgent — establishes gRPC call to the appropriate Python agent
+// callAgent — establishes gRPC call to the appropriate agent
 func (s *OrchestratorServer) callAgent(
 	ctx context.Context, agentType string, req *pb.FarmerQuery,
 ) *pb.AgentResult {
@@ -193,15 +196,19 @@ func (s *OrchestratorServer) callAgent(
 	}
 	defer grpcConn.Close()
 
-	callCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	timeout := 10 * time.Second
+	if agentType == "INCOME" {
+		timeout = 35 * time.Second // income agent chains soil + market (SARIMA fit)
+	}
+	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	switch agentType {
 	case "WEATHER":
 		client := pb.NewWeatherAgentServiceClient(grpcConn)
 		resp, err := client.GetWeatherForecast(callCtx, &pb.WeatherRequest{
-			District:    req.District,
-			Date:        time.Now().Format("2006-01-02"),
+			District:     req.District,
+			Date:         time.Now().Format("2006-01-02"),
 			ForecastDays: 7,
 		})
 		if err != nil {
@@ -231,6 +238,45 @@ func (s *OrchestratorServer) callAgent(
 			return errorResult("CROP_HEALTH_AGENT", err)
 		}
 		return marshalResult("Crop Health Agent", resp, 0.82)
+
+	case "MARKET":
+		client := pb.NewMarketAgentServiceClient(grpcConn)
+		resp, err := client.GetMarketAdvisory(callCtx, &pb.MarketRequest{
+			District: req.District,
+			Crop:     "Paddy",
+		})
+		if err != nil {
+			return errorResult("MARKET_AGENT", err)
+		}
+		return marshalResult("Market Price Agent", resp, 0.80)
+
+	case "PEST_RISK":
+		client := pb.NewPestRiskAgentServiceClient(grpcConn)
+		resp, err := client.GetPestRisk(callCtx, &pb.PestRiskRequest{
+			District:    req.District,
+			Season:      req.Season,
+			GrowthStage: "Active Tillering", // TODO: pass actual stage once FarmerQuery includes it
+			Temperature: 28.5,
+			Humidity:    82,
+			Rainfall:    10,
+		})
+		if err != nil {
+			return errorResult("PEST_RISK_AGENT", err)
+		}
+		return marshalResult("Pest Risk Agent", resp, 0.85)
+
+	case "INCOME":
+		client := pb.NewIncomeAgentServiceClient(grpcConn)
+		resp, err := client.GetIncomeEstimate(callCtx, &pb.IncomeRequest{
+			District: req.District,
+			Season:   req.Season,
+			Variety:  "BPT-5204",
+			AreaHa:   1,
+		})
+		if err != nil {
+			return errorResult("INCOME_AGENT", err)
+		}
+		return marshalResult("Farm Income Agent", resp, 0.78)
 	}
 
 	return &pb.AgentResult{Status: "UNKNOWN_AGENT"}
@@ -281,6 +327,9 @@ func agentHostFromEnv(agentType string) string {
 		"WEATHER":     "weather-agent",
 		"SOIL":        "soil-agent",
 		"CROP_HEALTH": "crop-health-agent",
+		"MARKET":      "market-agent",
+		"PEST_RISK":   "pest-risk-agent",
+		"INCOME":      "income-agent",
 	}
 	if d, ok := defaults[agentType]; ok {
 		return d
@@ -293,6 +342,9 @@ func agentPortFromEnv(agentType string) int32 {
 		"WEATHER":     50052,
 		"SOIL":        50053,
 		"CROP_HEALTH": 50054,
+		"MARKET":      50055,
+		"PEST_RISK":   50056,
+		"INCOME":      50057,
 	}
 	if p, ok := defaults[agentType]; ok {
 		return p

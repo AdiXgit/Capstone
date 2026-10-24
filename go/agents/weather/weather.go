@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/karnataka-paddy/paddy-multiagent/proto"
+	pb "github.com/AdiXgit/Capstone/proto"
 )
 
 // ─────────────────────────────────────────────

@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 python/agents/market_price_agent/sarima_backtest_results.csv
+
+# Compiled binaries
+*.exe

@@ -1,0 +1,17 @@
+# Generic Python agent image. Build args:
+#   AGENT_DIR    directory under python/agents/ (e.g. soil_agent)
+#   AGENT_SCRIPT entrypoint inside that directory (e.g. soil_agent.py)
+FROM python:3.11-slim
+ARG AGENT_DIR
+ARG AGENT_SCRIPT
+ENV PYTHONUNBUFFERED=1 \
+    AGENT_DIR=${AGENT_DIR} \
+    AGENT_SCRIPT=${AGENT_SCRIPT}
+WORKDIR /app
+COPY python/requirements.txt python/requirements.txt
+RUN pip install --no-cache-dir -r python/requirements.txt
+COPY python/ python/
+# agents resolve ../../../data relative to their own file -> /app/data
+COPY data/*.csv data/*.xlsx data/
+ENV PYTHONPATH=/app/python/shared
+CMD ["sh", "-c", "cd python/agents/${AGENT_DIR} && exec python ${AGENT_SCRIPT}"]

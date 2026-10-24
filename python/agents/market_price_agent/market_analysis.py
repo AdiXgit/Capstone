@@ -97,7 +97,6 @@ def get_market_advisory(variety, district=None):
         advisory_parts.append(f"Price is {pct_above_90:.1f}% above the 90-day average.")
     elif pct_above_90 < -5:
         advisory_parts.append(f"Price is {abs(pct_above_90):.1f}% below the 90-day average.")
-a
     if seasonal_deviation_pct is not None:
         if abs(seasonal_deviation_pct) > 5:
             direction = "above" if seasonal_deviation_pct > 0 else "below"
