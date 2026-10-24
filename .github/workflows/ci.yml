@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/paddy
 
 jobs:
 
@@ -106,6 +105,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Compute lowercase image name
+        # registry repository names must be lowercase; the owner (e.g. AdiXgit) is not
+        run: echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/paddy-${{ matrix.name }}:latest" >> "$GITHUB_ENV"
       - name: Log in to GHCR (main only)
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
@@ -119,7 +121,7 @@ jobs:
           file: ${{ matrix.file }}
           build-args: ${{ matrix.args }}
           push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+          tags: ${{ env.IMAGE }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
