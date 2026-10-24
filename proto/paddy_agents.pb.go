@@ -474,6 +474,7 @@ type AgentMetadata struct {
 	AgentName     string                 `protobuf:"bytes,2,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
 	Timestamp     string                 `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	Confidence    float32                `protobuf:"fixed32,4,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	Notes         string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"` // free-text detail (e.g. NDVI data source)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -534,6 +535,13 @@ func (x *AgentMetadata) GetConfidence() float32 {
 		return x.Confidence
 	}
 	return 0
+}
+
+func (x *AgentMetadata) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
 }
 
 type WeatherRequest struct {
@@ -1238,12 +1246,13 @@ func (x *SoilResponse) GetTrendInterpretation() string {
 }
 
 type CropHealthRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	District      string                 `protobuf:"bytes,1,opt,name=district,proto3" json:"district,omitempty"`
-	Season        string                 `protobuf:"bytes,2,opt,name=season,proto3" json:"season,omitempty"`
-	Year          int32                  `protobuf:"varint,3,opt,name=year,proto3" json:"year,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	District        string                 `protobuf:"bytes,1,opt,name=district,proto3" json:"district,omitempty"`
+	Season          string                 `protobuf:"bytes,2,opt,name=season,proto3" json:"season,omitempty"`
+	Year            int32                  `protobuf:"varint,3,opt,name=year,proto3" json:"year,omitempty"`
+	DaysAfterSowing int32                  `protobuf:"varint,4,opt,name=days_after_sowing,json=daysAfterSowing,proto3" json:"days_after_sowing,omitempty"` // optional — 0 means "derive from season/today"
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CropHealthRequest) Reset() {
@@ -1297,16 +1306,31 @@ func (x *CropHealthRequest) GetYear() int32 {
 	return 0
 }
 
+func (x *CropHealthRequest) GetDaysAfterSowing() int32 {
+	if x != nil {
+		return x.DaysAfterSowing
+	}
+	return 0
+}
+
 type CropHealthResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Metadata      *AgentMetadata         `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	District      string                 `protobuf:"bytes,2,opt,name=district,proto3" json:"district,omitempty"`
-	StressClass   string                 `protobuf:"bytes,3,opt,name=stress_class,json=stressClass,proto3" json:"stress_class,omitempty"` // "Healthy" | "Mild" | "Moderate" | "Severe"
-	NdviDeviation float32                `protobuf:"fixed32,4,opt,name=ndvi_deviation,json=ndviDeviation,proto3" json:"ndvi_deviation,omitempty"`
-	GrowthStage   string                 `protobuf:"bytes,5,opt,name=growth_stage,json=growthStage,proto3" json:"growth_stage,omitempty"`
-	Treatment     string                 `protobuf:"bytes,6,opt,name=treatment,proto3" json:"treatment,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Metadata       *AgentMetadata         `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	District       string                 `protobuf:"bytes,2,opt,name=district,proto3" json:"district,omitempty"`
+	CropStatus     string                 `protobuf:"bytes,3,opt,name=crop_status,json=cropStatus,proto3" json:"crop_status,omitempty"`    // "HEALTHY" | "STRESSED" | "DISEASED" | "UNKNOWN" (derived from stress_level)
+	DiseaseRisk    string                 `protobuf:"bytes,4,opt,name=disease_risk,json=diseaseRisk,proto3" json:"disease_risk,omitempty"` // "LOW" | "MEDIUM" | "HIGH"
+	Recommendation string                 `protobuf:"bytes,5,opt,name=recommendation,proto3" json:"recommendation,omitempty"`
+	Confidence     float32                `protobuf:"fixed32,6,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	// Fields below back the NDVI-based stress classifier and treatment mapping.
+	GrowthStage     string  `protobuf:"bytes,7,opt,name=growth_stage,json=growthStage,proto3" json:"growth_stage,omitempty"` // one of the 7 dataset growth stages
+	DaysAfterSowing int32   `protobuf:"varint,8,opt,name=days_after_sowing,json=daysAfterSowing,proto3" json:"days_after_sowing,omitempty"`
+	Ndvi            float32 `protobuf:"fixed32,9,opt,name=ndvi,proto3" json:"ndvi,omitempty"`
+	NdviDeviation   float32 `protobuf:"fixed32,10,opt,name=ndvi_deviation,json=ndviDeviation,proto3" json:"ndvi_deviation,omitempty"` // ndvi - stage's expected median NDVI
+	StressLevel     string  `protobuf:"bytes,11,opt,name=stress_level,json=stressLevel,proto3" json:"stress_level,omitempty"`         // "Healthy" | "Mild" | "Moderate" | "Severe"
+	Treatment       string  `protobuf:"bytes,12,opt,name=treatment,proto3" json:"treatment,omitempty"`                                // KVK treatment recommendation for (stress_level, growth_stage)
+	NdviSource      string  `protobuf:"bytes,13,opt,name=ndvi_source,json=ndviSource,proto3" json:"ndvi_source,omitempty"`            // "DATASET" | "NASA_POWER" | "OPEN_METEO" | "FALLBACK"
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CropHealthResponse) Reset() {
@@ -1353,16 +1377,30 @@ func (x *CropHealthResponse) GetDistrict() string {
 	return ""
 }
 
-func (x *CropHealthResponse) GetStressClass() string {
+func (x *CropHealthResponse) GetCropStatus() string {
 	if x != nil {
-		return x.StressClass
+		return x.CropStatus
 	}
 	return ""
 }
 
-func (x *CropHealthResponse) GetNdviDeviation() float32 {
+func (x *CropHealthResponse) GetDiseaseRisk() string {
 	if x != nil {
-		return x.NdviDeviation
+		return x.DiseaseRisk
+	}
+	return ""
+}
+
+func (x *CropHealthResponse) GetRecommendation() string {
+	if x != nil {
+		return x.Recommendation
+	}
+	return ""
+}
+
+func (x *CropHealthResponse) GetConfidence() float32 {
+	if x != nil {
+		return x.Confidence
 	}
 	return 0
 }
@@ -1374,7 +1412,189 @@ func (x *CropHealthResponse) GetGrowthStage() string {
 	return ""
 }
 
+func (x *CropHealthResponse) GetDaysAfterSowing() int32 {
+	if x != nil {
+		return x.DaysAfterSowing
+	}
+	return 0
+}
+
+func (x *CropHealthResponse) GetNdvi() float32 {
+	if x != nil {
+		return x.Ndvi
+	}
+	return 0
+}
+
+func (x *CropHealthResponse) GetNdviDeviation() float32 {
+	if x != nil {
+		return x.NdviDeviation
+	}
+	return 0
+}
+
+func (x *CropHealthResponse) GetStressLevel() string {
+	if x != nil {
+		return x.StressLevel
+	}
+	return ""
+}
+
 func (x *CropHealthResponse) GetTreatment() string {
+	if x != nil {
+		return x.Treatment
+	}
+	return ""
+}
+
+func (x *CropHealthResponse) GetNdviSource() string {
+	if x != nil {
+		return x.NdviSource
+	}
+	return ""
+}
+
+// GetTreatmentRecommendation looks up the KVK treatment for a (stress_level, growth_stage)
+// pair directly. If stress_level is left blank, it is derived the same way
+// GetCropHealthStatus derives it (dataset/fallback NDVI -> classifier).
+type TreatmentRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	District        string                 `protobuf:"bytes,1,opt,name=district,proto3" json:"district,omitempty"`
+	Season          string                 `protobuf:"bytes,2,opt,name=season,proto3" json:"season,omitempty"`
+	GrowthStage     string                 `protobuf:"bytes,3,opt,name=growth_stage,json=growthStage,proto3" json:"growth_stage,omitempty"` // optional — derived from days_after_sowing/season if blank
+	StressLevel     string                 `protobuf:"bytes,4,opt,name=stress_level,json=stressLevel,proto3" json:"stress_level,omitempty"` // optional — "Healthy" | "Mild" | "Moderate" | "Severe"; derived if blank
+	DaysAfterSowing int32                  `protobuf:"varint,5,opt,name=days_after_sowing,json=daysAfterSowing,proto3" json:"days_after_sowing,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *TreatmentRequest) Reset() {
+	*x = TreatmentRequest{}
+	mi := &file_paddy_agents_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TreatmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TreatmentRequest) ProtoMessage() {}
+
+func (x *TreatmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_paddy_agents_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TreatmentRequest.ProtoReflect.Descriptor instead.
+func (*TreatmentRequest) Descriptor() ([]byte, []int) {
+	return file_paddy_agents_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *TreatmentRequest) GetDistrict() string {
+	if x != nil {
+		return x.District
+	}
+	return ""
+}
+
+func (x *TreatmentRequest) GetSeason() string {
+	if x != nil {
+		return x.Season
+	}
+	return ""
+}
+
+func (x *TreatmentRequest) GetGrowthStage() string {
+	if x != nil {
+		return x.GrowthStage
+	}
+	return ""
+}
+
+func (x *TreatmentRequest) GetStressLevel() string {
+	if x != nil {
+		return x.StressLevel
+	}
+	return ""
+}
+
+func (x *TreatmentRequest) GetDaysAfterSowing() int32 {
+	if x != nil {
+		return x.DaysAfterSowing
+	}
+	return 0
+}
+
+type TreatmentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Metadata      *AgentMetadata         `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	GrowthStage   string                 `protobuf:"bytes,2,opt,name=growth_stage,json=growthStage,proto3" json:"growth_stage,omitempty"`
+	StressLevel   string                 `protobuf:"bytes,3,opt,name=stress_level,json=stressLevel,proto3" json:"stress_level,omitempty"`
+	Treatment     string                 `protobuf:"bytes,4,opt,name=treatment,proto3" json:"treatment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TreatmentResponse) Reset() {
+	*x = TreatmentResponse{}
+	mi := &file_paddy_agents_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TreatmentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TreatmentResponse) ProtoMessage() {}
+
+func (x *TreatmentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_paddy_agents_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TreatmentResponse.ProtoReflect.Descriptor instead.
+func (*TreatmentResponse) Descriptor() ([]byte, []int) {
+	return file_paddy_agents_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TreatmentResponse) GetMetadata() *AgentMetadata {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *TreatmentResponse) GetGrowthStage() string {
+	if x != nil {
+		return x.GrowthStage
+	}
+	return ""
+}
+
+func (x *TreatmentResponse) GetStressLevel() string {
+	if x != nil {
+		return x.StressLevel
+	}
+	return ""
+}
+
+func (x *TreatmentResponse) GetTreatment() string {
 	if x != nil {
 		return x.Treatment
 	}
@@ -1391,7 +1611,7 @@ type MarketRequest struct {
 
 func (x *MarketRequest) Reset() {
 	*x = MarketRequest{}
-	mi := &file_paddy_agents_proto_msgTypes[18]
+	mi := &file_paddy_agents_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1403,7 +1623,7 @@ func (x *MarketRequest) String() string {
 func (*MarketRequest) ProtoMessage() {}
 
 func (x *MarketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[18]
+	mi := &file_paddy_agents_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1416,7 +1636,7 @@ func (x *MarketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarketRequest.ProtoReflect.Descriptor instead.
 func (*MarketRequest) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{18}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *MarketRequest) GetDistrict() string {
@@ -1451,7 +1671,7 @@ type MarketResponse struct {
 
 func (x *MarketResponse) Reset() {
 	*x = MarketResponse{}
-	mi := &file_paddy_agents_proto_msgTypes[19]
+	mi := &file_paddy_agents_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1463,7 +1683,7 @@ func (x *MarketResponse) String() string {
 func (*MarketResponse) ProtoMessage() {}
 
 func (x *MarketResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[19]
+	mi := &file_paddy_agents_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1476,7 +1696,7 @@ func (x *MarketResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarketResponse.ProtoReflect.Descriptor instead.
 func (*MarketResponse) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{19}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *MarketResponse) GetMetadata() *AgentMetadata {
@@ -1563,7 +1783,7 @@ type PestRiskRequest struct {
 
 func (x *PestRiskRequest) Reset() {
 	*x = PestRiskRequest{}
-	mi := &file_paddy_agents_proto_msgTypes[20]
+	mi := &file_paddy_agents_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1795,7 @@ func (x *PestRiskRequest) String() string {
 func (*PestRiskRequest) ProtoMessage() {}
 
 func (x *PestRiskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[20]
+	mi := &file_paddy_agents_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1808,7 @@ func (x *PestRiskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PestRiskRequest.ProtoReflect.Descriptor instead.
 func (*PestRiskRequest) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{20}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *PestRiskRequest) GetDistrict() string {
@@ -1646,7 +1866,7 @@ type PestInfo struct {
 
 func (x *PestInfo) Reset() {
 	*x = PestInfo{}
-	mi := &file_paddy_agents_proto_msgTypes[21]
+	mi := &file_paddy_agents_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1658,7 +1878,7 @@ func (x *PestInfo) String() string {
 func (*PestInfo) ProtoMessage() {}
 
 func (x *PestInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[21]
+	mi := &file_paddy_agents_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1671,7 +1891,7 @@ func (x *PestInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PestInfo.ProtoReflect.Descriptor instead.
 func (*PestInfo) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{21}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *PestInfo) GetName() string {
@@ -1722,7 +1942,7 @@ type PestRiskResponse struct {
 
 func (x *PestRiskResponse) Reset() {
 	*x = PestRiskResponse{}
-	mi := &file_paddy_agents_proto_msgTypes[22]
+	mi := &file_paddy_agents_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1734,7 +1954,7 @@ func (x *PestRiskResponse) String() string {
 func (*PestRiskResponse) ProtoMessage() {}
 
 func (x *PestRiskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[22]
+	mi := &file_paddy_agents_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1747,7 +1967,7 @@ func (x *PestRiskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PestRiskResponse.ProtoReflect.Descriptor instead.
 func (*PestRiskResponse) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{22}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *PestRiskResponse) GetMetadata() *AgentMetadata {
@@ -1798,7 +2018,7 @@ type IncomeRequest struct {
 
 func (x *IncomeRequest) Reset() {
 	*x = IncomeRequest{}
-	mi := &file_paddy_agents_proto_msgTypes[23]
+	mi := &file_paddy_agents_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1810,7 +2030,7 @@ func (x *IncomeRequest) String() string {
 func (*IncomeRequest) ProtoMessage() {}
 
 func (x *IncomeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[23]
+	mi := &file_paddy_agents_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1823,7 +2043,7 @@ func (x *IncomeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IncomeRequest.ProtoReflect.Descriptor instead.
 func (*IncomeRequest) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{23}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *IncomeRequest) GetDistrict() string {
@@ -1873,7 +2093,7 @@ type PriceScenario struct {
 
 func (x *PriceScenario) Reset() {
 	*x = PriceScenario{}
-	mi := &file_paddy_agents_proto_msgTypes[24]
+	mi := &file_paddy_agents_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1885,7 +2105,7 @@ func (x *PriceScenario) String() string {
 func (*PriceScenario) ProtoMessage() {}
 
 func (x *PriceScenario) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[24]
+	mi := &file_paddy_agents_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1898,7 +2118,7 @@ func (x *PriceScenario) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PriceScenario.ProtoReflect.Descriptor instead.
 func (*PriceScenario) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{24}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PriceScenario) GetName() string {
@@ -1951,7 +2171,7 @@ type IncomeResponse struct {
 
 func (x *IncomeResponse) Reset() {
 	*x = IncomeResponse{}
-	mi := &file_paddy_agents_proto_msgTypes[25]
+	mi := &file_paddy_agents_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1963,7 +2183,7 @@ func (x *IncomeResponse) String() string {
 func (*IncomeResponse) ProtoMessage() {}
 
 func (x *IncomeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_paddy_agents_proto_msgTypes[25]
+	mi := &file_paddy_agents_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1976,7 +2196,7 @@ func (x *IncomeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IncomeResponse.ProtoReflect.Descriptor instead.
 func (*IncomeResponse) Descriptor() ([]byte, []int) {
-	return file_paddy_agents_proto_rawDescGZIP(), []int{25}
+	return file_paddy_agents_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *IncomeResponse) GetMetadata() *AgentMetadata {
@@ -2119,7 +2339,7 @@ const file_paddy_agents_proto_rawDesc = "" +
 	"\x0erecommendation\x18\x02 \x01(\tR\x0erecommendation\x127\n" +
 	"\ragent_results\x18\x03 \x03(\v2\x12.paddy.AgentResultR\fagentResults\x12-\n" +
 	"\x12overall_confidence\x18\x04 \x01(\x02R\x11overallConfidence\x12\x1c\n" +
-	"\ttimestamp\x18\x05 \x01(\tR\ttimestamp\"\x87\x01\n" +
+	"\ttimestamp\x18\x05 \x01(\tR\ttimestamp\"\x9d\x01\n" +
 	"\rAgentMetadata\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1d\n" +
 	"\n" +
@@ -2127,7 +2347,8 @@ const file_paddy_agents_proto_rawDesc = "" +
 	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\x12\x1e\n" +
 	"\n" +
 	"confidence\x18\x04 \x01(\x02R\n" +
-	"confidence\"e\n" +
+	"confidence\x12\x14\n" +
+	"\x05notes\x18\x05 \x01(\tR\x05notes\"e\n" +
 	"\x0eWeatherRequest\x12\x1a\n" +
 	"\bdistrict\x18\x01 \x01(\tR\bdistrict\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\x12#\n" +
@@ -2194,18 +2415,42 @@ const file_paddy_agents_proto_rawDesc = "" +
 	"\x14yield_interpretation\x18\r \x01(\tR\x13yieldInterpretation\x12$\n" +
 	"\x0eph_trend_slope\x18\x0e \x01(\x02R\fphTrendSlope\x12$\n" +
 	"\x0eoc_trend_slope\x18\x0f \x01(\x02R\focTrendSlope\x121\n" +
-	"\x14trend_interpretation\x18\x10 \x01(\tR\x13trendInterpretation\"[\n" +
+	"\x14trend_interpretation\x18\x10 \x01(\tR\x13trendInterpretation\"\x87\x01\n" +
 	"\x11CropHealthRequest\x12\x1a\n" +
 	"\bdistrict\x18\x01 \x01(\tR\bdistrict\x12\x16\n" +
 	"\x06season\x18\x02 \x01(\tR\x06season\x12\x12\n" +
-	"\x04year\x18\x03 \x01(\x05R\x04year\"\xed\x01\n" +
+	"\x04year\x18\x03 \x01(\x05R\x04year\x12*\n" +
+	"\x11days_after_sowing\x18\x04 \x01(\x05R\x0fdaysAfterSowing\"\xda\x03\n" +
 	"\x12CropHealthResponse\x120\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x14.paddy.AgentMetadataR\bmetadata\x12\x1a\n" +
-	"\bdistrict\x18\x02 \x01(\tR\bdistrict\x12!\n" +
-	"\fstress_class\x18\x03 \x01(\tR\vstressClass\x12%\n" +
-	"\x0endvi_deviation\x18\x04 \x01(\x02R\rndviDeviation\x12!\n" +
-	"\fgrowth_stage\x18\x05 \x01(\tR\vgrowthStage\x12\x1c\n" +
-	"\ttreatment\x18\x06 \x01(\tR\ttreatment\"?\n" +
+	"\bdistrict\x18\x02 \x01(\tR\bdistrict\x12\x1f\n" +
+	"\vcrop_status\x18\x03 \x01(\tR\n" +
+	"cropStatus\x12!\n" +
+	"\fdisease_risk\x18\x04 \x01(\tR\vdiseaseRisk\x12&\n" +
+	"\x0erecommendation\x18\x05 \x01(\tR\x0erecommendation\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x06 \x01(\x02R\n" +
+	"confidence\x12!\n" +
+	"\fgrowth_stage\x18\a \x01(\tR\vgrowthStage\x12*\n" +
+	"\x11days_after_sowing\x18\b \x01(\x05R\x0fdaysAfterSowing\x12\x12\n" +
+	"\x04ndvi\x18\t \x01(\x02R\x04ndvi\x12%\n" +
+	"\x0endvi_deviation\x18\n" +
+	" \x01(\x02R\rndviDeviation\x12!\n" +
+	"\fstress_level\x18\v \x01(\tR\vstressLevel\x12\x1c\n" +
+	"\ttreatment\x18\f \x01(\tR\ttreatment\x12\x1f\n" +
+	"\vndvi_source\x18\r \x01(\tR\n" +
+	"ndviSource\"\xb8\x01\n" +
+	"\x10TreatmentRequest\x12\x1a\n" +
+	"\bdistrict\x18\x01 \x01(\tR\bdistrict\x12\x16\n" +
+	"\x06season\x18\x02 \x01(\tR\x06season\x12!\n" +
+	"\fgrowth_stage\x18\x03 \x01(\tR\vgrowthStage\x12!\n" +
+	"\fstress_level\x18\x04 \x01(\tR\vstressLevel\x12*\n" +
+	"\x11days_after_sowing\x18\x05 \x01(\x05R\x0fdaysAfterSowing\"\xa9\x01\n" +
+	"\x11TreatmentResponse\x120\n" +
+	"\bmetadata\x18\x01 \x01(\v2\x14.paddy.AgentMetadataR\bmetadata\x12!\n" +
+	"\fgrowth_stage\x18\x02 \x01(\tR\vgrowthStage\x12!\n" +
+	"\fstress_level\x18\x03 \x01(\tR\vstressLevel\x12\x1c\n" +
+	"\ttreatment\x18\x04 \x01(\tR\ttreatment\"?\n" +
 	"\rMarketRequest\x12\x1a\n" +
 	"\bdistrict\x18\x01 \x01(\tR\bdistrict\x12\x12\n" +
 	"\x04crop\x18\x02 \x01(\tR\x04crop\"\xe1\x02\n" +
@@ -2281,9 +2526,10 @@ const file_paddy_agents_proto_rawDesc = "" +
 	"\x0fGetWeatherAlert\x12\x15.paddy.WeatherRequest\x1a\x1b.paddy.WeatherAlertResponse\x12Q\n" +
 	"\x14GetHistoricalWeather\x12\x1b.paddy.HistoricalWeatherReq\x1a\x1c.paddy.HistoricalWeatherResp2L\n" +
 	"\x10SoilAgentService\x128\n" +
-	"\rGetSoilHealth\x12\x12.paddy.SoilRequest\x1a\x13.paddy.SoilResponse2d\n" +
+	"\rGetSoilHealth\x12\x12.paddy.SoilRequest\x1a\x13.paddy.SoilResponse2\xb5\x01\n" +
 	"\x16CropHealthAgentService\x12J\n" +
-	"\x13GetCropHealthStatus\x12\x18.paddy.CropHealthRequest\x1a\x19.paddy.CropHealthResponse2V\n" +
+	"\x13GetCropHealthStatus\x12\x18.paddy.CropHealthRequest\x1a\x19.paddy.CropHealthResponse\x12O\n" +
+	"\x1aGetTreatmentRecommendation\x12\x17.paddy.TreatmentRequest\x1a\x18.paddy.TreatmentResponse2V\n" +
 	"\x12MarketAgentService\x12@\n" +
 	"\x11GetMarketAdvisory\x12\x14.paddy.MarketRequest\x1a\x15.paddy.MarketResponse2V\n" +
 	"\x14PestRiskAgentService\x12>\n" +
@@ -2303,7 +2549,7 @@ func file_paddy_agents_proto_rawDescGZIP() []byte {
 	return file_paddy_agents_proto_rawDescData
 }
 
-var file_paddy_agents_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_paddy_agents_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_paddy_agents_proto_goTypes = []any{
 	(*AgentRegistration)(nil),     // 0: paddy.AgentRegistration
 	(*RegistrationAck)(nil),       // 1: paddy.RegistrationAck
@@ -2323,14 +2569,16 @@ var file_paddy_agents_proto_goTypes = []any{
 	(*SoilResponse)(nil),          // 15: paddy.SoilResponse
 	(*CropHealthRequest)(nil),     // 16: paddy.CropHealthRequest
 	(*CropHealthResponse)(nil),    // 17: paddy.CropHealthResponse
-	(*MarketRequest)(nil),         // 18: paddy.MarketRequest
-	(*MarketResponse)(nil),        // 19: paddy.MarketResponse
-	(*PestRiskRequest)(nil),       // 20: paddy.PestRiskRequest
-	(*PestInfo)(nil),              // 21: paddy.PestInfo
-	(*PestRiskResponse)(nil),      // 22: paddy.PestRiskResponse
-	(*IncomeRequest)(nil),         // 23: paddy.IncomeRequest
-	(*PriceScenario)(nil),         // 24: paddy.PriceScenario
-	(*IncomeResponse)(nil),        // 25: paddy.IncomeResponse
+	(*TreatmentRequest)(nil),      // 18: paddy.TreatmentRequest
+	(*TreatmentResponse)(nil),     // 19: paddy.TreatmentResponse
+	(*MarketRequest)(nil),         // 20: paddy.MarketRequest
+	(*MarketResponse)(nil),        // 21: paddy.MarketResponse
+	(*PestRiskRequest)(nil),       // 22: paddy.PestRiskRequest
+	(*PestInfo)(nil),              // 23: paddy.PestInfo
+	(*PestRiskResponse)(nil),      // 24: paddy.PestRiskResponse
+	(*IncomeRequest)(nil),         // 25: paddy.IncomeRequest
+	(*PriceScenario)(nil),         // 26: paddy.PriceScenario
+	(*IncomeResponse)(nil),        // 27: paddy.IncomeResponse
 }
 var file_paddy_agents_proto_depIdxs = []int32{
 	5,  // 0: paddy.OrchestratorResponse.agent_results:type_name -> paddy.AgentResult
@@ -2341,38 +2589,41 @@ var file_paddy_agents_proto_depIdxs = []int32{
 	10, // 5: paddy.HistoricalWeatherResp.records:type_name -> paddy.WeatherResponse
 	7,  // 6: paddy.SoilResponse.metadata:type_name -> paddy.AgentMetadata
 	7,  // 7: paddy.CropHealthResponse.metadata:type_name -> paddy.AgentMetadata
-	7,  // 8: paddy.MarketResponse.metadata:type_name -> paddy.AgentMetadata
-	7,  // 9: paddy.PestRiskResponse.metadata:type_name -> paddy.AgentMetadata
-	21, // 10: paddy.PestRiskResponse.pests:type_name -> paddy.PestInfo
-	7,  // 11: paddy.IncomeResponse.metadata:type_name -> paddy.AgentMetadata
-	24, // 12: paddy.IncomeResponse.scenarios:type_name -> paddy.PriceScenario
-	0,  // 13: paddy.OrchestratorService.RegisterAgent:input_type -> paddy.AgentRegistration
-	2,  // 14: paddy.OrchestratorService.GetSystemStatus:input_type -> paddy.StatusRequest
-	4,  // 15: paddy.OrchestratorService.RouteQuery:input_type -> paddy.FarmerQuery
-	8,  // 16: paddy.WeatherAgentService.GetWeatherForecast:input_type -> paddy.WeatherRequest
-	8,  // 17: paddy.WeatherAgentService.GetWeatherAlert:input_type -> paddy.WeatherRequest
-	12, // 18: paddy.WeatherAgentService.GetHistoricalWeather:input_type -> paddy.HistoricalWeatherReq
-	14, // 19: paddy.SoilAgentService.GetSoilHealth:input_type -> paddy.SoilRequest
-	16, // 20: paddy.CropHealthAgentService.GetCropHealthStatus:input_type -> paddy.CropHealthRequest
-	18, // 21: paddy.MarketAgentService.GetMarketAdvisory:input_type -> paddy.MarketRequest
-	20, // 22: paddy.PestRiskAgentService.GetPestRisk:input_type -> paddy.PestRiskRequest
-	23, // 23: paddy.IncomeAgentService.GetIncomeEstimate:input_type -> paddy.IncomeRequest
-	1,  // 24: paddy.OrchestratorService.RegisterAgent:output_type -> paddy.RegistrationAck
-	3,  // 25: paddy.OrchestratorService.GetSystemStatus:output_type -> paddy.SystemStatusResponse
-	6,  // 26: paddy.OrchestratorService.RouteQuery:output_type -> paddy.OrchestratorResponse
-	10, // 27: paddy.WeatherAgentService.GetWeatherForecast:output_type -> paddy.WeatherResponse
-	11, // 28: paddy.WeatherAgentService.GetWeatherAlert:output_type -> paddy.WeatherAlertResponse
-	13, // 29: paddy.WeatherAgentService.GetHistoricalWeather:output_type -> paddy.HistoricalWeatherResp
-	15, // 30: paddy.SoilAgentService.GetSoilHealth:output_type -> paddy.SoilResponse
-	17, // 31: paddy.CropHealthAgentService.GetCropHealthStatus:output_type -> paddy.CropHealthResponse
-	19, // 32: paddy.MarketAgentService.GetMarketAdvisory:output_type -> paddy.MarketResponse
-	22, // 33: paddy.PestRiskAgentService.GetPestRisk:output_type -> paddy.PestRiskResponse
-	25, // 34: paddy.IncomeAgentService.GetIncomeEstimate:output_type -> paddy.IncomeResponse
-	24, // [24:35] is the sub-list for method output_type
-	13, // [13:24] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	7,  // 8: paddy.TreatmentResponse.metadata:type_name -> paddy.AgentMetadata
+	7,  // 9: paddy.MarketResponse.metadata:type_name -> paddy.AgentMetadata
+	7,  // 10: paddy.PestRiskResponse.metadata:type_name -> paddy.AgentMetadata
+	23, // 11: paddy.PestRiskResponse.pests:type_name -> paddy.PestInfo
+	7,  // 12: paddy.IncomeResponse.metadata:type_name -> paddy.AgentMetadata
+	26, // 13: paddy.IncomeResponse.scenarios:type_name -> paddy.PriceScenario
+	0,  // 14: paddy.OrchestratorService.RegisterAgent:input_type -> paddy.AgentRegistration
+	2,  // 15: paddy.OrchestratorService.GetSystemStatus:input_type -> paddy.StatusRequest
+	4,  // 16: paddy.OrchestratorService.RouteQuery:input_type -> paddy.FarmerQuery
+	8,  // 17: paddy.WeatherAgentService.GetWeatherForecast:input_type -> paddy.WeatherRequest
+	8,  // 18: paddy.WeatherAgentService.GetWeatherAlert:input_type -> paddy.WeatherRequest
+	12, // 19: paddy.WeatherAgentService.GetHistoricalWeather:input_type -> paddy.HistoricalWeatherReq
+	14, // 20: paddy.SoilAgentService.GetSoilHealth:input_type -> paddy.SoilRequest
+	16, // 21: paddy.CropHealthAgentService.GetCropHealthStatus:input_type -> paddy.CropHealthRequest
+	18, // 22: paddy.CropHealthAgentService.GetTreatmentRecommendation:input_type -> paddy.TreatmentRequest
+	20, // 23: paddy.MarketAgentService.GetMarketAdvisory:input_type -> paddy.MarketRequest
+	22, // 24: paddy.PestRiskAgentService.GetPestRisk:input_type -> paddy.PestRiskRequest
+	25, // 25: paddy.IncomeAgentService.GetIncomeEstimate:input_type -> paddy.IncomeRequest
+	1,  // 26: paddy.OrchestratorService.RegisterAgent:output_type -> paddy.RegistrationAck
+	3,  // 27: paddy.OrchestratorService.GetSystemStatus:output_type -> paddy.SystemStatusResponse
+	6,  // 28: paddy.OrchestratorService.RouteQuery:output_type -> paddy.OrchestratorResponse
+	10, // 29: paddy.WeatherAgentService.GetWeatherForecast:output_type -> paddy.WeatherResponse
+	11, // 30: paddy.WeatherAgentService.GetWeatherAlert:output_type -> paddy.WeatherAlertResponse
+	13, // 31: paddy.WeatherAgentService.GetHistoricalWeather:output_type -> paddy.HistoricalWeatherResp
+	15, // 32: paddy.SoilAgentService.GetSoilHealth:output_type -> paddy.SoilResponse
+	17, // 33: paddy.CropHealthAgentService.GetCropHealthStatus:output_type -> paddy.CropHealthResponse
+	19, // 34: paddy.CropHealthAgentService.GetTreatmentRecommendation:output_type -> paddy.TreatmentResponse
+	21, // 35: paddy.MarketAgentService.GetMarketAdvisory:output_type -> paddy.MarketResponse
+	24, // 36: paddy.PestRiskAgentService.GetPestRisk:output_type -> paddy.PestRiskResponse
+	27, // 37: paddy.IncomeAgentService.GetIncomeEstimate:output_type -> paddy.IncomeResponse
+	26, // [26:38] is the sub-list for method output_type
+	14, // [14:26] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_paddy_agents_proto_init() }
@@ -2386,7 +2637,7 @@ func file_paddy_agents_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_paddy_agents_proto_rawDesc), len(file_paddy_agents_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   7,
 		},

@@ -80,7 +80,7 @@ services:
       dockerfile: docker/Dockerfile.python_agent
       args:
         AGENT_DIR: crop_health_agent
-        AGENT_SCRIPT: server.py
+        AGENT_SCRIPT: crop_health_agent.py
     container_name: paddy-crop-health-agent
     ports: ["50054:50054"]
     environment:

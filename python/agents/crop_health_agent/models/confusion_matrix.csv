@@ -1,0 +1,5 @@
+,pred_Healthy,pred_Mild,pred_Moderate,pred_Severe
+true_Healthy,102,0,0,0
+true_Mild,0,59,0,0
+true_Moderate,0,0,59,0
+true_Severe,0,0,0,60

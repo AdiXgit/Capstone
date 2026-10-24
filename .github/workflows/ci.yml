@@ -96,7 +96,7 @@ jobs:
           - {name: pest-risk-agent,    file: docker/Dockerfile.pest_risk}
           - {name: dashboard,          file: docker/Dockerfile.dashboard}
           - {name: soil-agent,         file: docker/Dockerfile.python_agent, args: "AGENT_DIR=soil_agent\nAGENT_SCRIPT=soil_agent.py"}
-          - {name: crop-health-agent,  file: docker/Dockerfile.python_agent, args: "AGENT_DIR=crop_health_agent\nAGENT_SCRIPT=server.py"}
+          - {name: crop-health-agent,  file: docker/Dockerfile.python_agent, args: "AGENT_DIR=crop_health_agent\nAGENT_SCRIPT=crop_health_agent.py"}
           - {name: market-agent,       file: docker/Dockerfile.python_agent, args: "AGENT_DIR=market_price_agent\nAGENT_SCRIPT=market_agent.py"}
           - {name: income-agent,       file: docker/Dockerfile.python_agent, args: "AGENT_DIR=income_agent\nAGENT_SCRIPT=income_agent.py"}
     permissions:

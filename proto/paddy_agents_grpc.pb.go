@@ -503,7 +503,8 @@ var SoilAgentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	CropHealthAgentService_GetCropHealthStatus_FullMethodName = "/paddy.CropHealthAgentService/GetCropHealthStatus"
+	CropHealthAgentService_GetCropHealthStatus_FullMethodName        = "/paddy.CropHealthAgentService/GetCropHealthStatus"
+	CropHealthAgentService_GetTreatmentRecommendation_FullMethodName = "/paddy.CropHealthAgentService/GetTreatmentRecommendation"
 )
 
 // CropHealthAgentServiceClient is the client API for CropHealthAgentService service.
@@ -515,6 +516,7 @@ const (
 // ══════════════════════════════════════════════════════
 type CropHealthAgentServiceClient interface {
 	GetCropHealthStatus(ctx context.Context, in *CropHealthRequest, opts ...grpc.CallOption) (*CropHealthResponse, error)
+	GetTreatmentRecommendation(ctx context.Context, in *TreatmentRequest, opts ...grpc.CallOption) (*TreatmentResponse, error)
 }
 
 type cropHealthAgentServiceClient struct {
@@ -535,6 +537,16 @@ func (c *cropHealthAgentServiceClient) GetCropHealthStatus(ctx context.Context, 
 	return out, nil
 }
 
+func (c *cropHealthAgentServiceClient) GetTreatmentRecommendation(ctx context.Context, in *TreatmentRequest, opts ...grpc.CallOption) (*TreatmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TreatmentResponse)
+	err := c.cc.Invoke(ctx, CropHealthAgentService_GetTreatmentRecommendation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CropHealthAgentServiceServer is the server API for CropHealthAgentService service.
 // All implementations must embed UnimplementedCropHealthAgentServiceServer
 // for forward compatibility.
@@ -544,6 +556,7 @@ func (c *cropHealthAgentServiceClient) GetCropHealthStatus(ctx context.Context, 
 // ══════════════════════════════════════════════════════
 type CropHealthAgentServiceServer interface {
 	GetCropHealthStatus(context.Context, *CropHealthRequest) (*CropHealthResponse, error)
+	GetTreatmentRecommendation(context.Context, *TreatmentRequest) (*TreatmentResponse, error)
 	mustEmbedUnimplementedCropHealthAgentServiceServer()
 }
 
@@ -556,6 +569,9 @@ type UnimplementedCropHealthAgentServiceServer struct{}
 
 func (UnimplementedCropHealthAgentServiceServer) GetCropHealthStatus(context.Context, *CropHealthRequest) (*CropHealthResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCropHealthStatus not implemented")
+}
+func (UnimplementedCropHealthAgentServiceServer) GetTreatmentRecommendation(context.Context, *TreatmentRequest) (*TreatmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTreatmentRecommendation not implemented")
 }
 func (UnimplementedCropHealthAgentServiceServer) mustEmbedUnimplementedCropHealthAgentServiceServer() {
 }
@@ -597,6 +613,24 @@ func _CropHealthAgentService_GetCropHealthStatus_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CropHealthAgentService_GetTreatmentRecommendation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TreatmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CropHealthAgentServiceServer).GetTreatmentRecommendation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CropHealthAgentService_GetTreatmentRecommendation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CropHealthAgentServiceServer).GetTreatmentRecommendation(ctx, req.(*TreatmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CropHealthAgentService_ServiceDesc is the grpc.ServiceDesc for CropHealthAgentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -607,6 +641,10 @@ var CropHealthAgentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCropHealthStatus",
 			Handler:    _CropHealthAgentService_GetCropHealthStatus_Handler,
+		},
+		{
+			MethodName: "GetTreatmentRecommendation",
+			Handler:    _CropHealthAgentService_GetTreatmentRecommendation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
