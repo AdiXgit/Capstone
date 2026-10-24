@@ -1,0 +1,142 @@
+name: Phase 1 CI/CD — Paddy Multi-Agent System
+
+on:
+  push:
+    branches: [main, feature/**]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/paddy
+
+jobs:
+
+  # ── Proto Validation ─────────────────────────
+  proto-check:
+    name: 🔧 Validate Proto
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          pip install grpcio-tools==1.62.0
+      - name: Validate proto
+        run: |
+          protoc --python_out=/tmp -I proto proto/paddy_agents.proto
+          echo "✅ Proto valid"
+
+  # ── Go Tests (Orchestrator + Weather Agent) ──
+  go-test:
+    name: 🔵 Go Tests (Aditya / Orchestrator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+      - name: Install protoc
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - name: Generate proto stubs
+        run: |
+          protoc --go_out=. --go_opt=paths=source_relative \
+                 --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+                 proto/paddy_agents.proto
+      - name: Go mod download
+        run: go mod download
+      - name: Go vet
+        run: go vet ./...
+      - name: Go build — Orchestrator
+        run: go build -v ./go/orchestrator/
+      - name: Go build — Weather Agent
+        run: go build -v ./go/agents/weather/
+
+  # ── Python Tests (Soil + Crop Health Agents) ─
+  python-test:
+    name: 🐍 Python Tests (Aman + Rishi Mohan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r python/requirements.txt
+          pip install pytest pytest-mock
+      - name: Generate proto stubs
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          python -m grpc_tools.protoc \
+            -I proto \
+            --python_out=python/shared \
+            --grpc_python_out=python/shared \
+            proto/paddy_agents.proto
+          cp python/shared/paddy_agents_pb2*.py python/agents/soil_agent/
+          cp python/shared/paddy_agents_pb2*.py python/agents/crop_health_agent/
+      - name: Lint — soil agent
+        run: python -m py_compile python/agents/soil_agent/server.py && echo "✅ Soil agent OK"
+      - name: Lint — crop health agent
+        run: python -m py_compile python/agents/crop_health_agent/server.py && echo "✅ Crop health agent OK"
+
+  # ── Docker Build ─────────────────────────────
+  docker-build:
+    name: 🐳 Docker Build
+    runs-on: ubuntu-latest
+    needs: [go-test, python-test, proto-check]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build orchestrator
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.orchestrator
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-orchestrator:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build weather agent
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.weather
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-weather-agent:latest
+      - name: Build soil agent
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.python_agent
+          build-args: AGENT_MODULE=soil_agent
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-soil-agent:latest
+      - name: Build crop health agent
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.python_agent
+          build-args: AGENT_MODULE=crop_health_agent
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-crop-health-agent:latest
+      - name: Build dashboard
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.dashboard
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-dashboard:latest

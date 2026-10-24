@@ -1,3 +1,4 @@
+# python/agents/soil_agent/train_models.py
 import pandas as pd
 import numpy as np
 import joblib
@@ -10,17 +11,14 @@ from sklearn.metrics import mean_absolute_error, r2_score
 DATA_PATH = os.path.join(os.path.dirname(__file__), "../../../data/Karnataka_Paddy_Main_Dataset.csv")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 
-FEATURES = ["Soil_Nitrogen_kg_per_ha", "Soil_Phosphorus_kg_per_ha",
-            "Soil_Potassium_kg_per_ha", "Soil_pH",
-            "Soil_Organic_Carbon_Percent", "district_enc",
-            "season_enc", "region_enc", "soil_quality_enc",
-            "Rainfall_mm", "Irrigation_Percent"]
-
-TARGETS = {
-    "urea_kg_per_ha":   "Urea_Applied_kg_per_ha",
-    "dap_kg_per_ha":    "DAP_Applied_kg_per_ha",
-    "potash_kg_per_ha": "Potash_Applied_kg_per_ha",
-}
+# Must match the YIELD_FEATURES list inside fertilizer_model.py exactly
+YIELD_FEATURES = [
+    "Soil_Nitrogen_kg_per_ha", "Soil_Phosphorus_kg_per_ha",
+    "Soil_Potassium_kg_per_ha", "Soil_pH",
+    "Soil_Organic_Carbon_Percent", "Rainfall_mm",
+    "Irrigation_Percent", "Temperature_Celsius",
+    "district_enc", "season_enc", "region_enc", "soil_quality_enc"
+]
 
 os.makedirs(MODEL_DIR, exist_ok=True)
 
@@ -52,65 +50,56 @@ def train_models():
     df, encoders = load_and_prepare_data()
 
     print("=" * 55)
-    print("SOIL AGENT — MODEL TRAINING REPORT")
+    print("SOIL AGENT — YIELD PREDICTION MODEL")
     print("=" * 55)
-    print(f"Dataset:  {len(df)} records")
+    print(f"Dataset:   {len(df)} records")
     print(f"Districts: {df['District'].nunique()}")
-    print(f"Seasons:   {df['Season'].nunique()} ({', '.join(df['Season'].unique())})")
-    print(f"Regions:   {df['Region'].nunique()}")
-    print(f"Features:  {len(FEATURES)}")
+    print(f"Target:    Yield_Kg_per_Ha")
     print()
 
-    models = {}
+    X = df[YIELD_FEATURES]
+    y = df["Yield_Kg_per_Ha"]
 
-    for model_name, col in TARGETS.items():
-        print(f"── {model_name.upper()} ──")
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-        X = df[FEATURES]
-        y = df[col]
+    rf = RandomForestRegressor(
+        n_estimators=200,
+        max_depth=15,
+        min_samples_split=5,
+        min_samples_leaf=2,
+        random_state=42,
+        n_jobs=-1
+    )
+    rf.fit(X_train, y_train)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+    preds = rf.predict(X_test)
+    mae   = mean_absolute_error(y_test, preds)
+    r2    = r2_score(y_test, preds)
 
-        rf = RandomForestRegressor(
-            n_estimators=200,
-            max_depth=15,
-            min_samples_split=5,
-            min_samples_leaf=2,
-            random_state=42,
-            n_jobs=-1
-        )
-        rf.fit(X_train, y_train)
+    cv_scores = cross_val_score(rf, X, y, cv=5, scoring="neg_mean_absolute_error")
+    cv_mae    = -cv_scores.mean()
 
-        preds = rf.predict(X_test)
-        mae   = mean_absolute_error(y_test, preds)
-        r2    = r2_score(y_test, preds)
+    importances = pd.Series(rf.feature_importances_, index=YIELD_FEATURES)
+    top = importances.sort_values(ascending=False)
 
-        cv_scores = cross_val_score(rf, X, y, cv=5, scoring="neg_mean_absolute_error")
-        cv_mae    = -cv_scores.mean()
+    print(f"  MAE:             {mae:.2f} kg/ha")
+    print(f"  R² Score:        {r2:.4f}")
+    print(f"  CV MAE (5-fold): {cv_mae:.2f} kg/ha")
+    print()
+    print("  Feature Importances:")
+    for feat, imp in top.items():
+        print(f"    {feat:<35} {imp*100:.1f}%")
 
-        importances = pd.Series(rf.feature_importances_, index=FEATURES)
-        top = importances.sort_values(ascending=False)
-
-        print(f"  MAE:             {mae:.2f} kg/ha")
-        print(f"  R² Score:        {r2:.4f}")
-        print(f"  CV MAE (5-fold): {cv_mae:.2f} kg/ha")
-        print(f"  Top feature:     {top.index[0]} ({top.iloc[0]*100:.1f}%)")
-        print(f"  2nd feature:     {top.index[1]} ({top.iloc[1]*100:.1f}%)")
-        print(f"  3rd feature:     {top.index[2]} ({top.iloc[2]*100:.1f}%)")
-        print()
-
-        joblib.dump(rf, os.path.join(MODEL_DIR, f"{model_name}.pkl"))
-        models[model_name] = rf
-
-    # Save all encoders together
+    joblib.dump(rf,       os.path.join(MODEL_DIR, "yield_model.pkl"))
     joblib.dump(encoders, os.path.join(MODEL_DIR, "encoders.pkl"))
 
+    print()
     print("=" * 55)
-    print("All models saved to", MODEL_DIR)
+    print("Model saved to", MODEL_DIR)
     print("=" * 55)
-    return models
+    return rf
 
 
 if __name__ == "__main__":

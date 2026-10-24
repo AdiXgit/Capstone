@@ -1,0 +1,145 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────
+# Karnataka Paddy Multi-Agent System — Phase 1
+# Stack: Go Orchestrator + 3 Python Agents + Streamlit Dashboard
+# ─────────────────────────────────────────────
+
+networks:
+  paddy-net:
+    driver: bridge
+
+volumes:
+  paddy-data:
+    driver: local
+
+services:
+
+  # ── Go Orchestrator ──────────────────────────
+  orchestrator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: paddy-orchestrator
+    ports:
+      - "50051:50051"
+    environment:
+      - ORCHESTRATOR_PORT=50051
+      - WEATHER_AGENT_HOST=weather-agent
+      - WEATHER_AGENT_PORT=50052
+      - SOIL_AGENT_HOST=soil-agent
+      - SOIL_AGENT_PORT=50053
+      - CROP_HEALTH_AGENT_HOST=crop-health-agent
+      - CROP_HEALTH_AGENT_PORT=50054
+    networks:
+      - paddy-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50051"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Go Weather Agent (Aditya) ─────────────────
+  weather-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.weather
+    container_name: paddy-weather-agent
+    ports:
+      - "50052:50052"
+    environment:
+      - WEATHER_AGENT_PORT=50052
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+      # No API key needed — Open-Meteo is completely free
+      # Archive API for historical: https://archive-api.open-meteo.com
+      # Forecast API: https://api.open-meteo.com
+    networks:
+      - paddy-net
+    depends_on:
+      - orchestrator
+    restart: unless-stopped
+
+  # ── Python Soil Agent (Aman) ──────────────────
+  soil-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python_agent
+      args:
+        AGENT_MODULE: soil_agent
+    container_name: paddy-soil-agent
+    ports:
+      - "50053:50053"
+    environment:
+      - SOIL_AGENT_PORT=50053
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+      - MAIN_CSV_PATH=/data/Karnataka_Paddy_Main_Dataset.csv
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - paddy-net
+    depends_on:
+      - orchestrator
+    restart: unless-stopped
+
+  # ── Python Crop Health Agent (Rishi Mohan) ───
+  crop-health-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python_agent
+      args:
+        AGENT_MODULE: crop_health_agent
+    container_name: paddy-crop-health-agent
+    ports:
+      - "50054:50054"
+    environment:
+      - CROP_HEALTH_AGENT_PORT=50054
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+      - AI_ML_XLSX_PATH=/data/Karnataka_Paddy_AI_ML_Dataset.xlsx
+      - MAIN_CSV_PATH=/data/Karnataka_Paddy_Main_Dataset.csv
+      # NASA POWER is free, no key needed
+      # Sentinel Hub free trial: set SENTINEL_HUB_CLIENT_ID + SECRET for real NDVI
+      - SENTINEL_HUB_CLIENT_ID=${SENTINEL_HUB_CLIENT_ID:-}
+      - SENTINEL_HUB_CLIENT_SECRET=${SENTINEL_HUB_CLIENT_SECRET:-}
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - paddy-net
+    depends_on:
+      - orchestrator
+    restart: unless-stopped
+
+  # ── Streamlit Dashboard ───────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    container_name: paddy-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+      - WEATHER_AGENT_ADDR=weather-agent:50052
+      - SOIL_AGENT_ADDR=soil-agent:50053
+      - CROP_HEALTH_AGENT_ADDR=crop-health-agent:50054
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - paddy-net
+    depends_on:
+      - orchestrator
+      - weather-agent
+      - soil-agent
+      - crop-health-agent
+    restart: unless-stopped
+
+  # ── Redis (for caching agent responses) ──────
+  redis:
+    image: redis:7-alpine
+    container_name: paddy-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - paddy-net
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru

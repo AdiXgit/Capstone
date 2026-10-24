@@ -1,48 +1,288 @@
 syntax = "proto3";
 
 package paddy;
+option go_package = "github.com/AdiXgit/Capstone/proto";
 
-// ── Soil Agent ──────────────────────────────────────────
-service SoilAgent {
-  rpc GetNPKProfile    (DistrictRequest)      returns (NPKResponse);
-  rpc GetFertilizerRec (FertilizerRequest)    returns (FertilizerResponse);
-  rpc GetSoilTrend     (DistrictRequest)      returns (SoilTrendResponse);
+// ══════════════════════════════════════════════════════
+// ORCHESTRATOR SERVICE
+// ══════════════════════════════════════════════════════
+service OrchestratorService {
+  rpc RegisterAgent   (AgentRegistration) returns (RegistrationAck);
+  rpc GetSystemStatus (StatusRequest)     returns (SystemStatusResponse);
+  rpc RouteQuery      (FarmerQuery)       returns (OrchestratorResponse);
 }
 
-message DistrictRequest {
-  string district = 1;
+message AgentRegistration {
+  string agent_id   = 1;
+  string agent_name = 2;
+  string agent_type = 3;  // "WEATHER" | "SOIL" | "CROP_HEALTH" | "MARKET" | "PEST_RISK"
+  string host       = 4;
+  int32  port       = 5;
 }
 
-message FertilizerRequest {
-  string district = 1;
-  float  nitrogen  = 2;
-  float  phosphorus = 3;
-  float  potassium = 4;
-  float  ph        = 5;
-  float  organic_carbon = 6;
-  string season    = 7;  // "Kharif" or "Rabi"
+message RegistrationAck {
+  bool   success = 1;
+  string message = 2;
 }
 
-message NPKResponse {
+message StatusRequest {}
+
+message SystemStatusResponse {
+  string          orchestrator_status   = 1;
+  repeated string active_agents         = 2;
+  int32           total_queries_handled = 3;
+}
+
+message FarmerQuery {
+  string query_id   = 1;
+  string query_type = 2;  // "WEATHER" | "SOIL" | "CROP_HEALTH" | "FERTILIZER" | "MARKET" | "PEST_RISK" | "FULL"
+  string district    = 3;
+  string farmer_id   = 4;
+  string season       = 5;
+}
+
+message AgentResult {
+  string agent_name  = 1;
+  string result_json = 2;
+  float  confidence   = 3;
+  string status        = 4;  // "OK" | "ERROR" | "UNKNOWN_AGENT"
+}
+
+message OrchestratorResponse {
+  string               query_id           = 1;
+  string               recommendation      = 2;
+  repeated AgentResult agent_results       = 3;
+  float                overall_confidence = 4;
+  string               timestamp            = 5;
+}
+
+// ══════════════════════════════════════════════════════
+// SHARED
+// ══════════════════════════════════════════════════════
+message AgentMetadata {
+  string agent_id    = 1;
+  string agent_name  = 2;
+  string timestamp    = 3;
+  float  confidence   = 4;
+}
+
+// ══════════════════════════════════════════════════════
+// WEATHER AGENT SERVICE  (Aditya)
+// ══════════════════════════════════════════════════════
+service WeatherAgentService {
+  rpc GetWeatherForecast   (WeatherRequest)       returns (WeatherResponse);
+  rpc GetWeatherAlert      (WeatherRequest)       returns (WeatherAlertResponse);
+  rpc GetHistoricalWeather (HistoricalWeatherReq) returns (HistoricalWeatherResp);
+}
+
+message WeatherRequest {
+  string district      = 1;
+  string date            = 2;
+  int32  forecast_days  = 3;
+}
+
+message DailyForecast {
+  string date           = 1;
+  float  temp_max        = 2;
+  float  temp_min        = 3;
+  float  rainfall_prob  = 4;
+  string condition        = 5;
+}
+
+message WeatherResponse {
+  AgentMetadata metadata           = 1;
+  string        district            = 2;
+  float         temperature_max    = 3;
+  float         temperature_min    = 4;
+  float         temperature_avg    = 5;
+  float         rainfall_mm         = 6;
+  float         humidity_percent   = 7;
+  float         wind_speed_kmph    = 8;
+  float         sunshine_hours     = 9;
+  string        weather_condition   = 10;
+  string        farming_advisory    = 11;
+  repeated DailyForecast forecast  = 12;
+}
+
+message WeatherAlertResponse {
+  AgentMetadata metadata        = 1;
+  bool          has_alert        = 2;
+  string        alert_type       = 3;
+  string        severity          = 4;
+  string        message           = 5;
+  string        action_required  = 6;
+}
+
+message HistoricalWeatherReq {
   string district   = 1;
-  float  nitrogen   = 2;
-  float  phosphorus = 3;
-  float  potassium  = 4;
+  string start_date = 2;
+  string end_date   = 3;
 }
 
-message FertilizerResponse {
-  float  urea_kg_per_acre   = 1;
-  float  dap_kg_per_acre    = 2;
-  float  potash_kg_per_acre = 3;
-  string timing_advice      = 4;
-  string season             = 5;
+message HistoricalWeatherResp {
+  AgentMetadata            metadata       = 1;
+  repeated WeatherResponse records        = 2;
+  float                    avg_temp       = 3;
+  float                    total_rainfall = 4;
 }
 
-message SoilTrendResponse {
+// ══════════════════════════════════════════════════════
+// SOIL AGENT SERVICE  (Aman)
+// Single RPC bundling NPK + Fertilizer + Yield + Trend
+// ══════════════════════════════════════════════════════
+service SoilAgentService {
+  rpc GetSoilHealth (SoilRequest) returns (SoilResponse);
+}
+
+message SoilRequest {
+  string district = 1;
+  string season    = 2;
+}
+
+message SoilResponse {
+  AgentMetadata metadata                    = 1;
+  string        district                     = 2;
+
+  // NPK profile
+  float         nitrogen                    = 3;
+  float         phosphorus                  = 4;
+  float         potassium                   = 5;
+
+  // Soil chemistry
+  float         ph                           = 6;
+  float         organic_carbon              = 7;
+
+  // Fertilizer advisory (KVK rules)
+  float         urea_kg_per_ha              = 8;
+  float         dap_kg_per_ha               = 9;
+  float         potash_kg_per_ha            = 10;
+  string        timing_advice                = 11;
+
+  // Yield prediction (RF model)
+  float         predicted_yield_kg_per_ha  = 12;
+  string        yield_interpretation         = 13;
+
+  // 15-year soil trend
+  float         ph_trend_slope              = 14;
+  float         oc_trend_slope              = 15;
+  string        trend_interpretation         = 16;
+}
+
+// ══════════════════════════════════════════════════════
+// CROP HEALTH AGENT SERVICE  (Rishi)
+// ══════════════════════════════════════════════════════
+service CropHealthAgentService {
+  rpc GetCropHealthStatus (CropHealthRequest) returns (CropHealthResponse);
+}
+
+message CropHealthRequest {
+  string district = 1;
+  string season    = 2;
+  int32  year       = 3;
+}
+
+message CropHealthResponse {
+  AgentMetadata metadata        = 1;
+  string        district         = 2;
+  string        stress_class     = 3;   // "Healthy" | "Mild" | "Moderate" | "Severe"
+  float         ndvi_deviation  = 4;
+  string        growth_stage     = 5;
+  string        treatment         = 6;
+}
+
+// ══════════════════════════════════════════════════════
+// MARKET AGENT SERVICE  (Aman — NEW)
+// ══════════════════════════════════════════════════════
+service MarketAgentService {
+  rpc GetMarketAdvisory (MarketRequest) returns (MarketResponse);
+}
+
+message MarketRequest {
+  string district = 1;
+  string crop      = 2;
+}
+
+message MarketResponse {
+  AgentMetadata metadata      = 1;
+  string        variety        = 2;
+  float         current_price = 3;
+  float         avg_30day      = 4;
+  float         avg_90day      = 5;
+  string        price_trend    = 6;   // "rising" | "falling" | "stable"
+  string        market_demand = 7;   // "High" | "Medium" | "Low"
+  string        supply_status  = 8;   // "Surplus" | "Normal" | "Deficit"
+  string        best_month      = 9;
+  string        advisory         = 10;
+}
+
+// ══════════════════════════════════════════════════════
+// PEST RISK AGENT SERVICE  (Aditya — NEW)
+// ══════════════════════════════════════════════════════
+service PestRiskAgentService {
+  rpc GetPestRisk (PestRiskRequest) returns (PestRiskResponse);
+}
+
+message PestRiskRequest {
+  string district      = 1;
+  string season          = 2;
+  string growth_stage   = 3;
+  float  temperature     = 4;
+  float  humidity          = 5;
+  float  rainfall          = 6;
+}
+
+message PestInfo {
+  string name          = 1;
+  string risk_level     = 2;
+  string signs           = 3;
+  string action           = 4;
+  string etl_threshold   = 5;
+}
+
+message PestRiskResponse {
+  AgentMetadata     metadata      = 1;
+  string            district       = 2;
+  string            overall_risk  = 3;  // "Low" | "Medium" | "High"
+  repeated PestInfo pests          = 4;
+  string            advisory        = 5;
+}
+// ══════════════════════════════════════════════════════
+// FARM INCOME AGENT SERVICE  (Aman) — Port 50057
+// Paste this at the END of proto/paddy_agents.proto
+// Uses Soil Agent (yield + fertilizer) and Market Agent (price)
+// ══════════════════════════════════════════════════════
+service IncomeAgentService {
+  rpc GetIncomeEstimate (IncomeRequest) returns (IncomeResponse);
+}
+
+message IncomeRequest {
   string district          = 1;
-  float  ph_slope          = 2;
-  float  ph_last_value     = 3;
-  float  oc_slope          = 4;
-  float  oc_last_value     = 5;
-  string interpretation    = 6;
+  string season            = 2;   // "Kharif" | "Rabi"
+  string variety           = 3;   // e.g. "BPT-5204"
+  float  area_ha           = 4;   // farm size in hectares
+  float  other_cost_per_ha = 5;   // labour, seed etc. (0 if unknown)
+}
+
+message PriceScenario {
+  string name              = 1;   // "msp" | "sell_now" | "hold_1_month"
+  float  price_per_quintal = 2;
+  float  gross_income      = 3;
+  float  net_income        = 4;
+}
+
+message IncomeResponse {
+  AgentMetadata          metadata              = 1;
+  string                 district              = 2;
+  string                 variety               = 3;
+  float                  area_ha               = 4;
+  float                  yield_kg_per_ha       = 5;
+  float                  total_yield_quintals  = 6;
+  float                  fertilizer_cost_total = 7;
+  float                  other_cost_total      = 8;
+  repeated PriceScenario scenarios             = 9;
+  float                  expected_net_income   = 10;  // "sell_now" scenario
+  string                 recommendation        = 11;  // "sell now" | "hold"
+  string                 best_month_to_sell    = 12;
+  string                 advisory              = 13;
+  repeated string        warnings              = 14;
 }

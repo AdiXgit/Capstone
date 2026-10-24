@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/AdiXgit/Capstone/proto"
+	pb "github.com/karnataka-paddy/paddy-multiagent/proto"
 )
 
 // ─────────────────────────────────────────────
@@ -23,9 +23,9 @@ import (
 
 type OrchestratorServer struct {
 	pb.UnimplementedOrchestratorServiceServer
-	mu               sync.RWMutex
+	mu             sync.RWMutex
 	registeredAgents map[string]*AgentConnection
-	queryCounter     int32
+	queryCounter   int32
 }
 
 type AgentConnection struct {
@@ -200,8 +200,8 @@ func (s *OrchestratorServer) callAgent(
 	case "WEATHER":
 		client := pb.NewWeatherAgentServiceClient(grpcConn)
 		resp, err := client.GetWeatherForecast(callCtx, &pb.WeatherRequest{
-			District:     req.District,
-			Date:         time.Now().Format("2006-01-02"),
+			District:    req.District,
+			Date:        time.Now().Format("2006-01-02"),
 			ForecastDays: 7,
 		})
 		if err != nil {
