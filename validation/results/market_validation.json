@@ -1,0 +1,304 @@
+{
+ "forecast_error": {
+  "1": {
+   "sarima": {
+    "MAPE_pct": 1.41,
+    "MAE": 41.5,
+    "RMSE": 51.0,
+    "MASE": 0.394,
+    "n": 120
+   },
+   "ets": {
+    "MAPE_pct": 1.42,
+    "MAE": 41.6,
+    "RMSE": 50.9,
+    "MASE": 0.395,
+    "n": 120
+   },
+   "snaive": {
+    "MAPE_pct": 3.3,
+    "MAE": 98.0,
+    "RMSE": 113.4,
+    "MASE": 0.925,
+    "n": 120
+   },
+   "naive": {
+    "MAPE_pct": 3.79,
+    "MAE": 111.8,
+    "RMSE": 147.4,
+    "MASE": 1.058,
+    "n": 120
+   }
+  },
+  "2": {
+   "sarima": {
+    "MAPE_pct": 1.4,
+    "MAE": 41.7,
+    "RMSE": 50.9,
+    "MASE": 0.394,
+    "n": 115
+   },
+   "ets": {
+    "MAPE_pct": 1.4,
+    "MAE": 41.2,
+    "RMSE": 50.5,
+    "MASE": 0.39,
+    "n": 115
+   },
+   "snaive": {
+    "MAPE_pct": 3.25,
+    "MAE": 97.0,
+    "RMSE": 112.6,
+    "MASE": 0.916,
+    "n": 115
+   },
+   "naive": {
+    "MAPE_pct": 6.43,
+    "MAE": 189.9,
+    "RMSE": 220.8,
+    "MASE": 1.799,
+    "n": 115
+   }
+  },
+  "3": {
+   "sarima": {
+    "MAPE_pct": 1.41,
+    "MAE": 41.9,
+    "RMSE": 51.1,
+    "MASE": 0.396,
+    "n": 110
+   },
+   "ets": {
+    "MAPE_pct": 1.38,
+    "MAE": 40.9,
+    "RMSE": 49.8,
+    "MASE": 0.388,
+    "n": 110
+   },
+   "snaive": {
+    "MAPE_pct": 3.24,
+    "MAE": 96.9,
+    "RMSE": 112.0,
+    "MASE": 0.914,
+    "n": 110
+   },
+   "naive": {
+    "MAPE_pct": 8.52,
+    "MAE": 251.0,
+    "RMSE": 273.1,
+    "MASE": 2.377,
+    "n": 110
+   }
+  }
+ },
+ "direction": {
+  "sarima": 0.825,
+  "ets": 0.8,
+  "snaive": 0.725,
+  "share_of_months_price_rose": 0.5
+ },
+ "per_variety_MAPE": {
+  "BPT-5204": {
+   "sarima": 1.3,
+   "ets": 1.34,
+   "snaive": 3.94,
+   "naive": 3.98
+  },
+  "IR-64": {
+   "sarima": 1.21,
+   "ets": 1.29,
+   "snaive": 2.55,
+   "naive": 3.6
+  },
+  "JGL-1798": {
+   "sarima": 1.62,
+   "ets": 1.56,
+   "snaive": 3.1,
+   "naive": 3.92
+  },
+  "Jyothi": {
+   "sarima": 1.52,
+   "ets": 1.62,
+   "snaive": 3.33,
+   "naive": 3.65
+  },
+  "MTU-1010": {
+   "sarima": 1.4,
+   "ets": 1.3,
+   "snaive": 3.58,
+   "naive": 3.79
+  }
+ },
+ "diebold_mariano": {
+  "1": {
+   "sarima_vs_snaive": {
+    "DM_stat": -10.04,
+    "p_value": 0.0,
+    "sarima_better": true,
+    "significant_5pct": true
+   },
+   "sarima_vs_naive": {
+    "DM_stat": -7.77,
+    "p_value": 0.0,
+    "sarima_better": true,
+    "significant_5pct": true
+   },
+   "sarima_vs_ets": {
+    "DM_stat": -0.06,
+    "p_value": 0.951,
+    "sarima_better": true,
+    "significant_5pct": false
+   }
+  },
+  "2": {
+   "sarima_vs_snaive": {
+    "DM_stat": -10.14,
+    "p_value": 0.0,
+    "sarima_better": true,
+    "significant_5pct": true
+   },
+   "sarima_vs_naive": {
+    "DM_stat": -13.62,
+    "p_value": 0.0,
+    "sarima_better": true,
+    "significant_5pct": true
+   },
+   "sarima_vs_ets": {
+    "DM_stat": 0.32,
+    "p_value": 0.7482,
+    "sarima_better": false,
+    "significant_5pct": false
+   }
+  },
+  "3": {
+   "sarima_vs_snaive": {
+    "DM_stat": -8.29,
+    "p_value": 0.0,
+    "sarima_better": true,
+    "significant_5pct": true
+   },
+   "sarima_vs_naive": {
+    "DM_stat": -24.7,
+    "p_value": 0.0,
+    "sarima_better": true,
+    "significant_5pct": true
+   },
+   "sarima_vs_ets": {
+    "DM_stat": 0.59,
+    "p_value": 0.5582,
+    "sarima_better": false,
+    "significant_5pct": false
+   }
+  }
+ },
+ "interval_coverage": {
+  "1": {
+   "80": {
+    "empirical": 0.675,
+    "mean_width": 108.0
+   },
+   "95": {
+    "empirical": 0.883,
+    "mean_width": 166.0
+   }
+  },
+  "2": {
+   "80": {
+    "empirical": 0.713,
+    "mean_width": 109.0
+   },
+   "95": {
+    "empirical": 0.896,
+    "mean_width": 167.0
+   }
+  },
+  "3": {
+   "80": {
+    "empirical": 0.709,
+    "mean_width": 109.0
+   },
+   "95": {
+    "empirical": 0.9,
+    "mean_width": 167.0
+   }
+  }
+ },
+ "residual_diagnostics": {
+  "BPT-5204": {
+   "AIC": 1132.5,
+   "ljung_box_p_lag12": 0.906,
+   "ljung_box_p_lag24": 0.396,
+   "residual_mean": -2.4,
+   "residual_std": 45.9
+  },
+  "IR-64": {
+   "AIC": 1111.2,
+   "ljung_box_p_lag12": 0.055,
+   "ljung_box_p_lag24": 0.002,
+   "residual_mean": -2.6,
+   "residual_std": 41.1
+  },
+  "JGL-1798": {
+   "AIC": 1145.9,
+   "ljung_box_p_lag12": 0.018,
+   "ljung_box_p_lag24": 0.03,
+   "residual_mean": -2.9,
+   "residual_std": 49.0
+  },
+  "Jyothi": {
+   "AIC": 1113.0,
+   "ljung_box_p_lag12": 0.678,
+   "ljung_box_p_lag24": 0.895,
+   "residual_mean": -1.6,
+   "residual_std": 41.9
+  },
+  "MTU-1010": {
+   "AIC": 1144.6,
+   "ljung_box_p_lag12": 0.584,
+   "ljung_box_p_lag24": 0.925,
+   "residual_mean": 3.6,
+   "residual_std": 48.5
+  }
+ },
+ "decision_backtest": {
+  "SARIMA rule, margin Rs0": {
+   "mean_gain_Rs_per_q": 40.2,
+   "hold_calls": 42,
+   "of": 120,
+   "hit_rate_when_holding": 0.786,
+   "mean_gain_when_holding": 114.8
+  },
+  "SARIMA rule, margin Rs50": {
+   "mean_gain_Rs_per_q": 40.5,
+   "hold_calls": 27,
+   "of": 120,
+   "hit_rate_when_holding": 0.963,
+   "mean_gain_when_holding": 179.9
+  },
+  "Seasonal-naive rule, margin Rs0": {
+   "mean_gain_Rs_per_q": 36.3,
+   "hold_calls": 24,
+   "of": 120,
+   "hit_rate_when_holding": 0.917,
+   "mean_gain_when_holding": 181.6
+  },
+  "Always sell now": {
+   "mean_gain_Rs_per_q": 0.0
+  },
+  "Always hold": {
+   "mean_gain_Rs_per_q": -22.0
+  },
+  "Perfect foresight (upper bound)": {
+   "mean_gain_Rs_per_q": 46.3
+  }
+ },
+ "trend_label": {
+  "label_accuracy_next4obs": 0.401,
+  "n": 1130,
+  "note": "overlapping windows; below 0.5 means worse than a coin flip"
+ },
+ "failed_fits": {
+  "sarima": 0,
+  "ets": 0
+ }
+}

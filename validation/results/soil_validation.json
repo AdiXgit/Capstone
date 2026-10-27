@@ -1,0 +1,263 @@
+{
+ "protocols": {
+  "random 5-fold": {
+   "Global mean": {
+    "R2": -0.007,
+    "MAE": 665.8,
+    "RMSE": 847.2,
+    "MAPE_pct": 21.63,
+    "fold_R2_mean": -0.018,
+    "fold_R2_min": -0.038,
+    "n_test": 928
+   },
+   "District mean": {
+    "R2": 0.844,
+    "MAE": 269.3,
+    "RMSE": 333.3,
+    "MAPE_pct": 8.77,
+    "fold_R2_mean": 0.841,
+    "fold_R2_min": 0.828,
+    "n_test": 928
+   },
+   "Ridge (linear)": {
+    "R2": 0.877,
+    "MAE": 242.0,
+    "RMSE": 296.0,
+    "MAPE_pct": 7.85,
+    "fold_R2_mean": 0.874,
+    "fold_R2_min": 0.857,
+    "n_test": 928
+   },
+   "Gradient Boosting": {
+    "R2": 0.871,
+    "MAE": 249.6,
+    "RMSE": 303.5,
+    "MAPE_pct": 8.15,
+    "fold_R2_mean": 0.867,
+    "fold_R2_min": 0.833,
+    "n_test": 928
+   },
+   "Random Forest": {
+    "R2": 0.871,
+    "MAE": 246.7,
+    "RMSE": 303.3,
+    "MAPE_pct": 8.08,
+    "fold_R2_mean": 0.868,
+    "fold_R2_min": 0.838,
+    "n_test": 928
+   }
+  },
+  "leave-years-out": {
+   "Global mean": {
+    "R2": -0.0,
+    "MAE": 663.3,
+    "RMSE": 844.4,
+    "MAPE_pct": 21.56,
+    "fold_R2_mean": -0.001,
+    "fold_R2_min": -0.002,
+    "n_test": 928
+   },
+   "District mean": {
+    "R2": 0.847,
+    "MAE": 268.7,
+    "RMSE": 330.2,
+    "MAPE_pct": 8.74,
+    "fold_R2_mean": 0.847,
+    "fold_R2_min": 0.836,
+    "n_test": 928
+   },
+   "Ridge (linear)": {
+    "R2": 0.879,
+    "MAE": 239.7,
+    "RMSE": 293.6,
+    "MAPE_pct": 7.77,
+    "fold_R2_mean": 0.879,
+    "fold_R2_min": 0.871,
+    "n_test": 928
+   },
+   "Gradient Boosting": {
+    "R2": 0.875,
+    "MAE": 247.0,
+    "RMSE": 298.6,
+    "MAPE_pct": 8.05,
+    "fold_R2_mean": 0.874,
+    "fold_R2_min": 0.855,
+    "n_test": 928
+   },
+   "Random Forest": {
+    "R2": 0.872,
+    "MAE": 247.2,
+    "RMSE": 302.4,
+    "MAPE_pct": 8.07,
+    "fold_R2_mean": 0.871,
+    "fold_R2_min": 0.854,
+    "n_test": 928
+   }
+  },
+  "leave-districts-out": {
+   "Global mean": {
+    "R2": -0.037,
+    "MAE": 677.8,
+    "RMSE": 859.9,
+    "MAPE_pct": 22.04,
+    "fold_R2_mean": -0.184,
+    "fold_R2_min": -0.473,
+    "n_test": 928
+   },
+   "District mean": {
+    "R2": -0.037,
+    "MAE": 677.8,
+    "RMSE": 859.9,
+    "MAPE_pct": 22.04,
+    "fold_R2_mean": -0.184,
+    "fold_R2_min": -0.473,
+    "n_test": 928
+   },
+   "Ridge (linear)": {
+    "R2": 0.87,
+    "MAE": 248.3,
+    "RMSE": 305.0,
+    "MAPE_pct": 8.11,
+    "fold_R2_mean": 0.778,
+    "fold_R2_min": 0.414,
+    "n_test": 928
+   },
+   "Gradient Boosting": {
+    "R2": 0.759,
+    "MAE": 298.4,
+    "RMSE": 414.1,
+    "MAPE_pct": 10.32,
+    "fold_R2_mean": 0.688,
+    "fold_R2_min": 0.353,
+    "n_test": 928
+   },
+   "Random Forest": {
+    "R2": 0.769,
+    "MAE": 293.4,
+    "RMSE": 406.1,
+    "MAPE_pct": 10.12,
+    "fold_R2_mean": 0.688,
+    "fold_R2_min": 0.325,
+    "n_test": 928
+   }
+  },
+  "forward-chaining": {
+   "Global mean": {
+    "R2": -0.02,
+    "MAE": 638.1,
+    "RMSE": 851.9,
+    "MAPE_pct": 19.17,
+    "fold_R2_mean": -0.02,
+    "fold_R2_min": -0.024,
+    "n_test": 232
+   },
+   "District mean": {
+    "R2": 0.831,
+    "MAE": 272.9,
+    "RMSE": 346.7,
+    "MAPE_pct": 8.26,
+    "fold_R2_mean": 0.83,
+    "fold_R2_min": 0.813,
+    "n_test": 232
+   },
+   "Ridge (linear)": {
+    "R2": 0.864,
+    "MAE": 253.7,
+    "RMSE": 311.0,
+    "MAPE_pct": 7.77,
+    "fold_R2_mean": 0.864,
+    "fold_R2_min": 0.848,
+    "n_test": 232
+   },
+   "Gradient Boosting": {
+    "R2": 0.862,
+    "MAE": 252.1,
+    "RMSE": 312.9,
+    "MAPE_pct": 7.66,
+    "fold_R2_mean": 0.864,
+    "fold_R2_min": 0.842,
+    "n_test": 232
+   },
+   "Random Forest": {
+    "R2": 0.857,
+    "MAE": 258.2,
+    "RMSE": 319.5,
+    "MAPE_pct": 7.84,
+    "fold_R2_mean": 0.856,
+    "fold_R2_min": 0.843,
+    "n_test": 232
+   }
+  }
+ },
+ "rf_vs_district_mean": {
+  "random 5-fold": {
+   "mean_abs_err_RF": 246.7,
+   "mean_abs_err_district_mean": 269.3,
+   "wilcoxon_p": 4.131966557019086e-05,
+   "RF_better": true
+  },
+  "leave-years-out": {
+   "mean_abs_err_RF": 247.2,
+   "mean_abs_err_district_mean": 268.7,
+   "wilcoxon_p": 5.4897285799034646e-05,
+   "RF_better": true
+  },
+  "leave-districts-out": {
+   "mean_abs_err_RF": 293.4,
+   "mean_abs_err_district_mean": 677.8,
+   "wilcoxon_p": 4.9268731039415554e-76,
+   "RF_better": true
+  },
+  "forward-chaining": {
+   "mean_abs_err_RF": 258.2,
+   "mean_abs_err_district_mean": 272.9,
+   "wilcoxon_p": 0.12963430813242197,
+   "RF_better": true
+  }
+ },
+ "residuals": {
+  "bias_kg_ha": -2.7,
+  "MAE_by_season": {
+   "Kharif": 262.3,
+   "Rabi": 232.1
+  },
+  "worst_districts": {
+   "Koppal": 413.7,
+   "Mandya": 393.0,
+   "Raichur": 367.1,
+   "Shivamogga": 332.7,
+   "Mysuru": 313.2
+  },
+  "best_districts": {
+   "Chitradurga": 169.8,
+   "Kodagu": 189.1,
+   "Dakshina Kannada": 189.9
+  }
+ },
+ "intervals": {
+  "0.8": {
+   "nominal": 0.8,
+   "empirical_coverage": 0.798,
+   "mean_width_kg_ha": 774.0
+  },
+  "0.9": {
+   "nominal": 0.9,
+   "empirical_coverage": 0.9,
+   "mean_width_kg_ha": 965.0
+  }
+ },
+ "permutation_importance": {
+  "Irrigation_Percent": 0.7064,
+  "soil_quality_enc": 0.2514,
+  "Rainfall_mm": 0.0607,
+  "region_enc": 0.003,
+  "district_enc": 0.0026,
+  "season_enc": 0.002,
+  "Soil_Organic_Carbon_Percent": 0.001,
+  "Soil_Potassium_kg_per_ha": 0.0006,
+  "Soil_Nitrogen_kg_per_ha": 0.0005,
+  "Soil_Phosphorus_kg_per_ha": 0.0005,
+  "Soil_pH": -0.0005,
+  "Temperature_Celsius": -0.0005
+ }
+}
