@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import paddy_agents_pb2       as pb2
 import paddy_agents_pb2_grpc  as pb2_grpc
 
-from npk_profiles      import get_npk_for_district
+from npk_profiles import get_npk_for_district, get_agro_profile_for_district
 from fertilizer_model  import get_fertilizer_recommendation, predict_yield
 from soil_trend        import get_soil_trend
 
@@ -39,17 +39,11 @@ class SoilAgentServicer(pb2_grpc.SoilAgentServiceServicer):
                 season=season,
             )
             yield_result = predict_yield(
-                district=district,
-                nitrogen=npk["N"],
-                phosphorus=npk["P"],
-                potassium=npk["K"],
-                ph=trend.get("ph_last_value", 6.5),
-                organic_carbon=trend.get("oc_last_value", 0.5),
-                rainfall=900,       # placeholder average — refine with live weather agent data later
-                irrigation=65,
-                temperature=25,
-                season=season,
-            )
+    district=district, nitrogen=npk["N"], phosphorus=npk["P"], potassium=npk["K"],
+    ph=trend.get("ph_last_value", 6.5), organic_carbon=trend.get("oc_last_value", 0.5),
+    rainfall=agro["rainfall"], irrigation=agro["irrigation"], temperature=agro["temperature"],
+    season=season, region=agro["region"], soil_quality=agro["soil_quality"],
+)
 
             return pb2.SoilResponse(
                 metadata=self._meta(),
