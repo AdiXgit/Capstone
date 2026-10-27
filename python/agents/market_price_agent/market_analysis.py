@@ -15,6 +15,12 @@ VALID_VARIETIES = [
     "BPT-5204", "IR-64", "JGL-1798", "Jyothi", "MTU-1010"
 ]
 
+# Empirical one-month-ahead absolute-error quantiles from a
+# 24-month rolling-origin backtest, pooled across all five varieties.
+# These are empirical prediction bands, not SARIMAX confidence intervals.
+SARIMA_BAND_RS_80 = 67.0
+SARIMA_BAND_RS_90 = 84.0
+
 
 def load_market_data(variety):
     df = pd.read_csv(DATA_PATH)
@@ -69,10 +75,7 @@ def fit_sarima(df_v, forecast_months=3):
         )
 
         fitted = model.fit(disp=False)
-
-        forecast = fitted.forecast(
-            steps=forecast_months
-        )
+        forecast = fitted.forecast(steps=forecast_months)
 
         in_sample = fitted.get_prediction(
             start=len(monthly) - 1,
@@ -93,7 +96,6 @@ def get_market_advisory(variety, district=None):
     df = load_market_data(variety)
 
     current_row = df.iloc[-1]
-
     current_price = float(
         current_row["Price_Rs_per_Quintal"]
     )
@@ -127,14 +129,12 @@ def get_market_advisory(variety, district=None):
     else:
         trend = "stable"
 
-    # Seasonal analysis: identify the month with the highest average price
+    # Seasonal analysis
     monthly_avg = df.groupby(
         df["Date"].dt.month
     )["Price_Rs_per_Quintal"].mean()
 
-    best_month_num = int(
-        monthly_avg.idxmax()
-    )
+    best_month_num = int(monthly_avg.idxmax())
 
     months = [
         "January", "February", "March", "April",
@@ -171,6 +171,24 @@ def get_market_advisory(variety, district=None):
             float(forecast.iloc[0]), 2
         )
 
+    # Empirical forecast bands
+    forecast_low_80 = forecast_high_80 = None
+    forecast_low_90 = forecast_high_90 = None
+
+    if forecast_next_month is not None:
+        forecast_low_80 = round(
+            forecast_next_month - SARIMA_BAND_RS_80, 2
+        )
+        forecast_high_80 = round(
+            forecast_next_month + SARIMA_BAND_RS_80, 2
+        )
+        forecast_low_90 = round(
+            forecast_next_month - SARIMA_BAND_RS_90, 2
+        )
+        forecast_high_90 = round(
+            forecast_next_month + SARIMA_BAND_RS_90, 2
+        )
+
     # Build farmer-facing advisory
     advisory_parts = []
 
@@ -178,7 +196,6 @@ def get_market_advisory(variety, district=None):
         advisory_parts.append(
             f"Price is {pct_above_90:.1f}% above the 90-day average."
         )
-
     elif pct_above_90 < -5:
         advisory_parts.append(
             f"Price is {abs(pct_above_90):.1f}% below the 90-day average."
@@ -188,17 +205,13 @@ def get_market_advisory(variety, district=None):
     if seasonal_deviation_pct is not None:
         if abs(seasonal_deviation_pct) > 5:
             direction = (
-                "above"
-                if seasonal_deviation_pct > 0
-                else "below"
+                "above" if seasonal_deviation_pct > 0 else "below"
             )
-
             advisory_parts.append(
                 f"Price is {abs(seasonal_deviation_pct):.1f}% "
                 f"{direction} what SARIMA expects for this time "
                 f"of year (after accounting for the seasonal cycle)."
             )
-
         else:
             advisory_parts.append(
                 "Price is in line with the expected seasonal pattern."
@@ -221,21 +234,24 @@ def get_market_advisory(variety, district=None):
             "Low demand and surplus supply — softer market conditions."
         )
 
-    # Use SARIMA forecast instead of the old trend label whenever available
+    # Prefer SARIMA forecast when available
     elif forecast_next_month is not None:
-        # Compare forecast against current price
         diff = forecast_next_month - current_price
 
         if diff > 50:
             advisory_parts.append(
                 f"SARIMA forecasts the price rising to about "
-                f"Rs {forecast_next_month:,.0f}/quintal next month."
+                f"Rs {forecast_next_month:,.0f}/quintal next month "
+                f"(likely between Rs {forecast_low_80:,.0f} and "
+                f"Rs {forecast_high_80:,.0f})."
             )
 
         elif diff < -50:
             advisory_parts.append(
                 f"SARIMA forecasts the price falling to about "
-                f"Rs {forecast_next_month:,.0f}/quintal next month."
+                f"Rs {forecast_next_month:,.0f}/quintal next month "
+                f"(likely between Rs {forecast_low_80:,.0f} and "
+                f"Rs {forecast_high_80:,.0f})."
             )
 
         else:
@@ -243,7 +259,7 @@ def get_market_advisory(variety, district=None):
                 "SARIMA does not forecast a clear price move next month."
             )
 
-    # Fall back to the linear-regression trend only when no forecast exists
+    # Fall back to the linear-regression trend if no forecast exists
     elif trend == "rising":
         advisory_parts.append(
             "Short-term price trend is upward."
@@ -268,14 +284,16 @@ def get_market_advisory(variety, district=None):
         "sarima_status": sarima_status,
         "sarima_seasonal_expected_price": (
             round(seasonal_expected, 2)
-            if seasonal_expected is not None
-            else None
+            if seasonal_expected is not None else None
         ),
         "sarima_seasonal_deviation_pct": (
             round(seasonal_deviation_pct, 1)
-            if seasonal_deviation_pct is not None
-            else None
+            if seasonal_deviation_pct is not None else None
         ),
         "sarima_next_month_forecast": forecast_next_month,
+        "forecast_low_80": forecast_low_80,
+        "forecast_high_80": forecast_high_80,
+        "forecast_low_90": forecast_low_90,
+        "forecast_high_90": forecast_high_90,
         "advisory": advisory,
     }

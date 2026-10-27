@@ -56,3 +56,18 @@ def test_no_crop_given_defaults_sensibly():
     r = svc.GetMarketAdvisory(pb2.MarketRequest(district="Mandya", crop=""), ctx)
     assert ctx.code is None
     assert r.variety == "BPT-5204"
+
+def test_forecast_bands_bracket_the_point_forecast():
+    svc = MarketAgentServicer()
+    r = svc.GetMarketAdvisory(pb2.MarketRequest(district="Mandya", crop="BPT-5204"), FakeContext())
+    assert r.sarima_status == "ok"
+    assert r.forecast_low_80 < r.sarima_next_month_forecast < r.forecast_high_80
+    assert r.forecast_low_90 < r.forecast_low_80
+    assert r.forecast_high_90 > r.forecast_high_80
+
+
+def test_rising_advisory_mentions_the_band():
+    svc = MarketAgentServicer()
+    r = svc.GetMarketAdvisory(pb2.MarketRequest(district="Mandya", crop="BPT-5204"), FakeContext())
+    if "SARIMA forecasts the price rising" in r.advisory or "SARIMA forecasts the price falling" in r.advisory:
+        assert "likely between Rs" in r.advisory

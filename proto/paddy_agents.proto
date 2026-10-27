@@ -217,9 +217,14 @@ message MarketResponse {
   // SARIMA forecast fields
   // 0 means the forecast could not be generated.
   float         sarima_next_month_forecast = 11;
-
-  // "ok", "insufficient_history", or "fit_failed"
   string        sarima_status = 12;
+
+  // Empirical forecast intervals from historical backtesting.
+  // These are empirical prediction bands, not SARIMA confidence intervals.
+  float         forecast_low_80  = 13;
+  float         forecast_high_80 = 14;
+  float         forecast_low_90  = 15;
+  float         forecast_high_90 = 16;
 }
 
 // ══════════════════════════════════════════════════════
