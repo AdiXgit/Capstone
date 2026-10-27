@@ -34,16 +34,17 @@ class SoilAgentServicer(pb2_grpc.SoilAgentServiceServicer):
 
             npk = get_npk_for_district(district)
             trend = get_soil_trend(district)
+            agro = get_agro_profile_for_district(district)
             fert = get_fertilizer_recommendation(
-                soil_quality="medium",  # can be refined later with real soil_quality input
+                soil_quality=agro["soil_quality"],
                 season=season,
             )
             yield_result = predict_yield(
-    district=district, nitrogen=npk["N"], phosphorus=npk["P"], potassium=npk["K"],
-    ph=trend.get("ph_last_value", 6.5), organic_carbon=trend.get("oc_last_value", 0.5),
-    rainfall=agro["rainfall"], irrigation=agro["irrigation"], temperature=agro["temperature"],
-    season=season, region=agro["region"], soil_quality=agro["soil_quality"],
-)
+                district=district, nitrogen=npk["N"], phosphorus=npk["P"], potassium=npk["K"],
+                ph=trend.get("ph_last_value", 6.5), organic_carbon=trend.get("oc_last_value", 0.5),
+                rainfall=agro["rainfall"], irrigation=agro["irrigation"], temperature=agro["temperature"],
+                season=season, region=agro["region"], soil_quality=agro["soil_quality"],
+            )
 
             return pb2.SoilResponse(
                 metadata=self._meta(),
