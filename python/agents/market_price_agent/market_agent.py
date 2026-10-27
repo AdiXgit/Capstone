@@ -25,7 +25,7 @@ class MarketAgentServicer(pb2_grpc.MarketAgentServiceServicer):
 
     def GetMarketAdvisory(self, request, context):
         try:
-            variety = request.variety or "BPT-5204"
+            variety = request.crop if request.crop and request.crop.lower() != "paddy" else "BPT-5204"
             result = get_market_advisory(variety, district=request.district)
 
             return pb2.MarketResponse(
@@ -39,6 +39,8 @@ class MarketAgentServicer(pb2_grpc.MarketAgentServiceServicer):
                 supply_status=result["supply_status"],
                 best_month=result["best_month"],
                 advisory=result["advisory"],
+                sarima_next_month_forecast=result["sarima_next_month_forecast"] or 0.0,
+                sarima_status=result["sarima_status"],
             )
         except ValueError as e:
             context.set_details(str(e))
