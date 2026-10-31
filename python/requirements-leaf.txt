@@ -1,0 +1,10 @@
+# Extra dependencies for the leaf disease agent only.
+#
+# Kept out of python/requirements.txt on purpose: torch is ~2GB installed and
+# every other Python agent image would carry it for nothing.
+#
+# Install the CPU wheels explicitly, otherwise pip pulls the CUDA build:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+torch==2.11.0
+torchvision==0.26.0
+pillow>=10.1.0

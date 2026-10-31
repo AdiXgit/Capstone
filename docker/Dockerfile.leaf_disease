@@ -1,0 +1,21 @@
+# Leaf disease agent — needs PyTorch, so it gets its own image rather than
+# bloating the shared Dockerfile.python_agent used by the other Python agents.
+FROM python:3.11-slim
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+COPY python/requirements.txt python/requirements.txt
+RUN pip install --no-cache-dir -r python/requirements.txt
+
+# CPU wheels come from PyTorch's own index; installing torch from PyPI would
+# drag in the CUDA runtime and roughly triple the image size.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+      torch==2.11.0 torchvision==0.26.0 \
+ && pip install --no-cache-dir "pillow>=10.1.0"
+
+COPY python/ python/
+ENV PYTHONPATH=/app/python/shared
+
+# Inference only reads the committed checkpoint, so the 120-image training set
+# is deliberately not copied into the serving image.
+CMD ["sh", "-c", "cd python/agents/leaf_disease_agent && exec python leaf_disease_agent.py"]

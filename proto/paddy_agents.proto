@@ -316,3 +316,56 @@ message IncomeResponse {
   string                 advisory              = 13;
   repeated string        warnings              = 14;
 }
+
+// ══════════════════════════════════════════════════════
+// LEAF DISEASE AGENT SERVICE — Port 50058
+// Image-based diagnosis via an ImageNet-pretrained CNN (transfer learning).
+// Complements PestRiskAgentService: that one forecasts risk from weather and
+// growth stage, this one observes what is actually on the leaf. When weather
+// fields are supplied this agent calls PestRiskAgentService and fuses both.
+// ══════════════════════════════════════════════════════
+service LeafDiseaseAgentService {
+  rpc DiagnoseLeafImage (LeafImageRequest) returns (LeafDiseaseResponse);
+}
+
+message LeafImageRequest {
+  bytes  image            = 1;  // JPEG/PNG bytes, one leaf filling the frame
+  string district         = 2;
+  string season           = 3;
+  string growth_stage     = 4;
+  // Weather fields are optional. Supplying them enables rule fusion;
+  // leaving them at 0 yields an image-only diagnosis.
+  float  temperature      = 5;
+  float  humidity         = 6;
+  float  rainfall         = 7;
+  bool   skip_rule_fusion = 8;
+}
+
+message DiseaseProbability {
+  string disease     = 1;
+  float  probability = 2;
+}
+
+message LeafDiseaseResponse {
+  AgentMetadata metadata             = 1;
+  string        district             = 2;
+
+  // Image diagnosis
+  string        detected_disease     = 3;  // empty when inconclusive
+  float         detection_confidence = 4;
+  bool          inconclusive         = 5;
+  repeated DiseaseProbability probabilities = 6;
+
+  // Fused outcome
+  string        overall_risk         = 7;  // "Low" | "Medium" | "High" | "Unknown"
+  string        basis                = 8;  // "image+rules" | "image_only" | "rules_only" | "none"
+  bool          corroborated         = 9;  // rules independently agreed
+
+  // Advisory for the detected disease
+  string        pathogen             = 10;
+  string        signs                = 11;
+  string        action               = 12;
+  string        etl_threshold        = 13;
+  string        advisory             = 14;
+  repeated string rule_pests         = 15;  // pests the rulebook flagged
+}

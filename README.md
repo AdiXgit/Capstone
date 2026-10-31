@@ -364,4 +364,84 @@ paddy-multiagent-phase1/
 - Sell/hold advisory combining price momentum + demand/supply signals
 - Tests: 2/2 passing (`pytest test_market_agent.py -v`)
 
+### Cross-variety transfer learning (price forecasting)
+Each variety has only ~339 usable training weeks — too few to train a neural
+forecaster on. All five varieties share near-identical dynamics (weekly
+volatility 4.6–4.9%, lag-1 autocorrelation of weekly *changes* ≈ −0.4) while
+their shocks correlate only 0.14–0.31, so the other varieties teach the shape
+of the process without revealing the target's movements.
+
+`PriceGRU` (<5k params) predicts next-week **log return** — scale-free, which
+is what makes weights transferable across varieties priced hundreds of rupees
+apart. Splits are by calendar, never shuffled: train ≤2021, val 2022,
+test 2023-01→2024-12.
+
+Mean over all 5 varieties as target, 3 seeds (`run_transfer_experiment.py`):
+
+| model | MAE ₹/qtl | RMSE | MAPE | direction | vs naive |
+|-------------|-------|--------|-------|-------|--------|
+| naive       | 107.66| 137.28 | 3.66% | —     | —      |
+| ar1         |  97.09| 125.25 | 3.30% | 0.631 | −9.8%  |
+| target_only |  93.48| 115.73 | 3.16% | 0.691 | −13.2% |
+| **transfer**|**85.25**|**103.30**|**2.88%**|**0.729**|**−20.8%**|
+
+Transfer beats target-only by **8.8% MAE, winning on 5/5 varieties**. Note that
+`target_only` barely beats the closed-form `ar1` baseline (and loses to it on
+MTU-1010): pretraining is what makes the network worth having.
+
+Caveat: the dataset appears synthetic (near-identical dynamics across
+varieties), so real mandi data would likely transfer less cleanly.
+
+## Leaf Disease Agent — Port 50058
+Image-based diagnosis by transfer learning, complementing the rule-based Go
+pest agent. The rulebook forecasts risk from weather and growth stage; this
+agent observes what is actually on the leaf. It models none of the same
+diseases, so the two are additive.
+
+- Dataset: 120 images, 3 classes, 40 each — far too small to train from scratch
+- Two preprocessing fixes the data demanded:
+  - **Resolution leakage**: all 40 blight images are exactly 3081×897 while the
+    other classes are mixed, so images are height-normalised before
+    augmentation and absolute resolution never reaches the model
+  - **3.4:1 leaf strips**: square crops along the strip are both correct
+    framing and free augmentation; inference averages 5 crops
+- Folds split at **image** level — crops from one leaf are near-duplicates
+
+Ablation, 5-fold CV, identical architecture, only initial weights differ
+(`python train.py`):
+
+| mode | accuracy | macro F1 |
+|----------|---------------|-------|
+| scratch  | 0.808 ± 0.073 | 0.809 |
+| frozen   | 0.717 ± 0.122 | 0.709 |
+| **finetune** | **0.908 ± 0.031** | **0.907** |
+
+The interesting result: a **frozen** ImageNet backbone is *worse* than training
+from scratch. ImageNet features are object-centric and do not encode
+leaf-lesion texture — frozen features recall bacterial leaf blight only 47.5%
+of the time, confusing it with brown spot. The gain comes from **adapting**
+pretrained features, not reusing them frozen. Fine-tuning also gives the
+tightest spread across folds (±0.031 vs ±0.073 and ±0.122), i.e. the most
+stable model, and recalls blight — the one disease here that can cost 20–50%
+of yield — 40/40, at the price of 6 false positives.
+
+Methodology note: in `frozen` mode the backbone's BatchNorm layers are put in
+eval() mode, not merely `requires_grad=False`. Gradients and running
+mean/variance updates are independent; without this the "frozen" backbone
+keeps adapting its BatchNorm statistics and the comparison measures something
+other than frozen features (it scored 0.758 that way, vs 0.717 truly frozen).
+
+Fusion raises risk when a disease is observed regardless of forecast, and
+treats agreement as corroboration — but only when *both* signals are elevated,
+so a cosmetic leaf smut plus unrelated insect pressure is not escalated to High.
+
+- Tests: 22 passing (`pytest` in `python/agents/leaf_disease_agent/`)
+- Try it without gRPC: `python predict_demo.py --sample --rule-risk Medium`
+
+## Regenerating gRPC stubs
+The generated stubs are committed. After **any** edit to
+`proto/paddy_agents.proto`, run `scripts/gen_proto.sh` and commit the result —
+a stale commit makes agents fail at import. Needs `grpcio-tools` plus `protoc`
+with `protoc-gen-go` / `protoc-gen-go-grpc`.
+
 

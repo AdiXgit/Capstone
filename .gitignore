@@ -8,3 +8,9 @@ python/agents/market_price_agent/sarima_backtest_results.csv
 
 # Compiled binaries
 *.exe
+
+# Training artefacts. The results (ablation.json, transfer_results.json) and
+# the trained checkpoint are committed; raw stdout and crash-resume
+# bookkeeping are not.
+*.log
+fold_progress.json

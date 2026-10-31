@@ -5,7 +5,7 @@ import warnings
 
 import paddy_agents_pb2 as paddy__agents__pb2
 
-GRPC_GENERATED_VERSION = '1.78.0'
+GRPC_GENERATED_VERSION = '1.81.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class OrchestratorServiceStub(object):
+class OrchestratorServiceStub:
     """══════════════════════════════════════════════════════
     ORCHESTRATOR SERVICE
     ══════════════════════════════════════════════════════
@@ -54,7 +54,7 @@ class OrchestratorServiceStub(object):
                 _registered_method=True)
 
 
-class OrchestratorServiceServicer(object):
+class OrchestratorServiceServicer:
     """══════════════════════════════════════════════════════
     ORCHESTRATOR SERVICE
     ══════════════════════════════════════════════════════
@@ -104,7 +104,7 @@ def add_OrchestratorServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class OrchestratorService(object):
+class OrchestratorService:
     """══════════════════════════════════════════════════════
     ORCHESTRATOR SERVICE
     ══════════════════════════════════════════════════════
@@ -192,7 +192,7 @@ class OrchestratorService(object):
             _registered_method=True)
 
 
-class WeatherAgentServiceStub(object):
+class WeatherAgentServiceStub:
     """══════════════════════════════════════════════════════
     WEATHER AGENT SERVICE  (Aditya)
     ══════════════════════════════════════════════════════
@@ -221,7 +221,7 @@ class WeatherAgentServiceStub(object):
                 _registered_method=True)
 
 
-class WeatherAgentServiceServicer(object):
+class WeatherAgentServiceServicer:
     """══════════════════════════════════════════════════════
     WEATHER AGENT SERVICE  (Aditya)
     ══════════════════════════════════════════════════════
@@ -271,7 +271,7 @@ def add_WeatherAgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class WeatherAgentService(object):
+class WeatherAgentService:
     """══════════════════════════════════════════════════════
     WEATHER AGENT SERVICE  (Aditya)
     ══════════════════════════════════════════════════════
@@ -359,7 +359,7 @@ class WeatherAgentService(object):
             _registered_method=True)
 
 
-class SoilAgentServiceStub(object):
+class SoilAgentServiceStub:
     """══════════════════════════════════════════════════════
     SOIL AGENT SERVICE  (Aman)
     Single RPC bundling NPK + Fertilizer + Yield + Trend
@@ -379,7 +379,7 @@ class SoilAgentServiceStub(object):
                 _registered_method=True)
 
 
-class SoilAgentServiceServicer(object):
+class SoilAgentServiceServicer:
     """══════════════════════════════════════════════════════
     SOIL AGENT SERVICE  (Aman)
     Single RPC bundling NPK + Fertilizer + Yield + Trend
@@ -408,7 +408,7 @@ def add_SoilAgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class SoilAgentService(object):
+class SoilAgentService:
     """══════════════════════════════════════════════════════
     SOIL AGENT SERVICE  (Aman)
     Single RPC bundling NPK + Fertilizer + Yield + Trend
@@ -443,7 +443,7 @@ class SoilAgentService(object):
             _registered_method=True)
 
 
-class CropHealthAgentServiceStub(object):
+class CropHealthAgentServiceStub:
     """══════════════════════════════════════════════════════
     CROP HEALTH AGENT SERVICE  (Rishi)
     ══════════════════════════════════════════════════════
@@ -467,7 +467,7 @@ class CropHealthAgentServiceStub(object):
                 _registered_method=True)
 
 
-class CropHealthAgentServiceServicer(object):
+class CropHealthAgentServiceServicer:
     """══════════════════════════════════════════════════════
     CROP HEALTH AGENT SERVICE  (Rishi)
     ══════════════════════════════════════════════════════
@@ -506,7 +506,7 @@ def add_CropHealthAgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class CropHealthAgentService(object):
+class CropHealthAgentService:
     """══════════════════════════════════════════════════════
     CROP HEALTH AGENT SERVICE  (Rishi)
     ══════════════════════════════════════════════════════
@@ -567,7 +567,7 @@ class CropHealthAgentService(object):
             _registered_method=True)
 
 
-class MarketAgentServiceStub(object):
+class MarketAgentServiceStub:
     """══════════════════════════════════════════════════════
     MARKET AGENT SERVICE  (Aman — NEW)
     ══════════════════════════════════════════════════════
@@ -586,7 +586,7 @@ class MarketAgentServiceStub(object):
                 _registered_method=True)
 
 
-class MarketAgentServiceServicer(object):
+class MarketAgentServiceServicer:
     """══════════════════════════════════════════════════════
     MARKET AGENT SERVICE  (Aman — NEW)
     ══════════════════════════════════════════════════════
@@ -614,7 +614,7 @@ def add_MarketAgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class MarketAgentService(object):
+class MarketAgentService:
     """══════════════════════════════════════════════════════
     MARKET AGENT SERVICE  (Aman — NEW)
     ══════════════════════════════════════════════════════
@@ -648,7 +648,7 @@ class MarketAgentService(object):
             _registered_method=True)
 
 
-class PestRiskAgentServiceStub(object):
+class PestRiskAgentServiceStub:
     """══════════════════════════════════════════════════════
     PEST RISK AGENT SERVICE  (Aditya — NEW)
     ══════════════════════════════════════════════════════
@@ -667,7 +667,7 @@ class PestRiskAgentServiceStub(object):
                 _registered_method=True)
 
 
-class PestRiskAgentServiceServicer(object):
+class PestRiskAgentServiceServicer:
     """══════════════════════════════════════════════════════
     PEST RISK AGENT SERVICE  (Aditya — NEW)
     ══════════════════════════════════════════════════════
@@ -695,7 +695,7 @@ def add_PestRiskAgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class PestRiskAgentService(object):
+class PestRiskAgentService:
     """══════════════════════════════════════════════════════
     PEST RISK AGENT SERVICE  (Aditya — NEW)
     ══════════════════════════════════════════════════════
@@ -729,7 +729,7 @@ class PestRiskAgentService(object):
             _registered_method=True)
 
 
-class IncomeAgentServiceStub(object):
+class IncomeAgentServiceStub:
     """══════════════════════════════════════════════════════
     FARM INCOME AGENT SERVICE  (Aman) — Port 50057
     Paste this at the END of proto/paddy_agents.proto
@@ -750,7 +750,7 @@ class IncomeAgentServiceStub(object):
                 _registered_method=True)
 
 
-class IncomeAgentServiceServicer(object):
+class IncomeAgentServiceServicer:
     """══════════════════════════════════════════════════════
     FARM INCOME AGENT SERVICE  (Aman) — Port 50057
     Paste this at the END of proto/paddy_agents.proto
@@ -780,7 +780,7 @@ def add_IncomeAgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class IncomeAgentService(object):
+class IncomeAgentService:
     """══════════════════════════════════════════════════════
     FARM INCOME AGENT SERVICE  (Aman) — Port 50057
     Paste this at the END of proto/paddy_agents.proto
@@ -805,6 +805,99 @@ class IncomeAgentService(object):
             '/paddy.IncomeAgentService/GetIncomeEstimate',
             paddy__agents__pb2.IncomeRequest.SerializeToString,
             paddy__agents__pb2.IncomeResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class LeafDiseaseAgentServiceStub:
+    """══════════════════════════════════════════════════════
+    LEAF DISEASE AGENT SERVICE — Port 50058
+    Image-based diagnosis via an ImageNet-pretrained CNN (transfer learning).
+    Complements PestRiskAgentService: that one forecasts risk from weather and
+    growth stage, this one observes what is actually on the leaf. When weather
+    fields are supplied this agent calls PestRiskAgentService and fuses both.
+    ══════════════════════════════════════════════════════
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.DiagnoseLeafImage = channel.unary_unary(
+                '/paddy.LeafDiseaseAgentService/DiagnoseLeafImage',
+                request_serializer=paddy__agents__pb2.LeafImageRequest.SerializeToString,
+                response_deserializer=paddy__agents__pb2.LeafDiseaseResponse.FromString,
+                _registered_method=True)
+
+
+class LeafDiseaseAgentServiceServicer:
+    """══════════════════════════════════════════════════════
+    LEAF DISEASE AGENT SERVICE — Port 50058
+    Image-based diagnosis via an ImageNet-pretrained CNN (transfer learning).
+    Complements PestRiskAgentService: that one forecasts risk from weather and
+    growth stage, this one observes what is actually on the leaf. When weather
+    fields are supplied this agent calls PestRiskAgentService and fuses both.
+    ══════════════════════════════════════════════════════
+    """
+
+    def DiagnoseLeafImage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_LeafDiseaseAgentServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'DiagnoseLeafImage': grpc.unary_unary_rpc_method_handler(
+                    servicer.DiagnoseLeafImage,
+                    request_deserializer=paddy__agents__pb2.LeafImageRequest.FromString,
+                    response_serializer=paddy__agents__pb2.LeafDiseaseResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'paddy.LeafDiseaseAgentService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('paddy.LeafDiseaseAgentService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class LeafDiseaseAgentService:
+    """══════════════════════════════════════════════════════
+    LEAF DISEASE AGENT SERVICE — Port 50058
+    Image-based diagnosis via an ImageNet-pretrained CNN (transfer learning).
+    Complements PestRiskAgentService: that one forecasts risk from weather and
+    growth stage, this one observes what is actually on the leaf. When weather
+    fields are supplied this agent calls PestRiskAgentService and fuses both.
+    ══════════════════════════════════════════════════════
+    """
+
+    @staticmethod
+    def DiagnoseLeafImage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/paddy.LeafDiseaseAgentService/DiagnoseLeafImage',
+            paddy__agents__pb2.LeafImageRequest.SerializeToString,
+            paddy__agents__pb2.LeafDiseaseResponse.FromString,
             options,
             channel_credentials,
             insecure,

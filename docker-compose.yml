@@ -4,7 +4,8 @@
 # (soil, crop-health, market, income) + Streamlit dashboard
 #
 # Ports: orchestrator 50051 | weather 50052 | soil 50053 | crop-health 50054
-#        market 50055 | pest-risk 50056 | income 50057 | dashboard 8501
+#        market 50055 | pest-risk 50056 | income 50057 | leaf-disease 50058
+#        dashboard 8501
 # ─────────────────────────────────────────────
 
 x-py-health: &py-health
@@ -137,6 +138,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 6
+
+  leaf-disease-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.leaf_disease
+    container_name: paddy-leaf-disease-agent
+    ports: ["50058:50058"]
+    environment:
+      - LEAF_DISEASE_AGENT_PORT=50058
+      - ORCHESTRATOR_ADDR=orchestrator:50051
+      - PEST_RISK_AGENT_ADDR=pest-risk-agent:50056
+      - LEAF_DISEASE_MIN_CONFIDENCE=0.55
+    networks: [paddy-net]
+    depends_on:
+      orchestrator: {condition: service_healthy}
+      pest-risk-agent: {condition: service_healthy}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 50058), 3)"]
+      # Loading the CNN checkpoint takes longer than the other Python agents.
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
 
   income-agent:
     build:
